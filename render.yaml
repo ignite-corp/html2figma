@@ -1,16 +1,15 @@
 # Render 배포 설정 (git 연동, CLI 불필요 — VPN이 특정 CLI를 막아도 웹 대시보드로 배포 가능)
 # https://render.com → New → Blueprint → 이 저장소 선택
+#
+# Render 기본 Node 이미지는 /usr/bin, /usr/lib/node_modules 가 읽기 전용(EROFS)이라
+# corepack enable / npm install -g pnpm 이 모두 실패한다.
+# → Docker 런타임으로 빌드해 컨테이너 안에서 pnpm(corepack)을 사용한다. (로컬 검증 완료)
 services:
   - type: web
     name: html2figma-relay
-    runtime: node
+    runtime: docker
     plan: free
-    # corepack enable 은 Render의 읽기전용 /usr/bin 에 심링크를 만들려다 실패(EROFS)하므로
-    # pnpm 을 전역 설치해 사용한다.
-    buildCommand: npm install -g pnpm@10.33.0 && pnpm install --no-frozen-lockfile && pnpm --filter @html2figma/shared build && pnpm --filter @html2figma/bridge build
-    startCommand: node packages/bridge/dist/server.js
+    dockerfilePath: ./packages/bridge/Dockerfile
+    dockerContext: .
     healthCheckPath: /health
-    envVars:
-      - key: COREPACK_ENABLE_DOWNLOAD_PROMPT
-        value: "0"
-    # Render 가 PORT 를 주입 → 서버가 process.env.PORT 로 바인딩함
+    # 컨테이너가 PORT(기본 8080)로 바인딩 → Render 가 자동 매핑

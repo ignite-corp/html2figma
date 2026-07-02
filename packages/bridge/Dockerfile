@@ -1,6 +1,7 @@
 # html2figma 릴레이 — 범용 컨테이너 이미지 (Fly.io / Railway / Koyeb 등)
 # 저장소 루트를 컨텍스트로 빌드: docker build -f packages/bridge/Dockerfile .
 FROM node:20-alpine AS build
+ENV CI=true
 RUN corepack enable
 WORKDIR /app
 COPY . .

@@ -1,0 +1,12 @@
+node_modules
+**/node_modules
+dist
+**/dist
+dist-test
+**/dist-test
+.git
+*.log
+*.zip
+.wrangler
+Dockerfile.verify
+**/.DS_Store
