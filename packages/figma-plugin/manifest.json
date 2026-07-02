@@ -6,6 +6,7 @@
   "ui": "ui.html",
   "editorType": ["figma"],
   "networkAccess": {
-    "allowedDomains": ["none"]
+    "allowedDomains": ["ws://localhost:8787", "http://localhost:8787"],
+    "reasoning": "로컬 브릿지 서버로부터 캡처 결과를 자동 수신"
   }
 }

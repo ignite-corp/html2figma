@@ -1,5 +1,5 @@
-import type { H2FNode, FrameNode, TextNode, ImageNode, Layout } from "@html2figma/shared";
-import type { RawNode } from "./snapshot.js";
+import type { H2FNode, FrameNode, TextNode, ImageNode, VectorNode, Layout } from "@html2figma/shared";
+import type { RawNode, ParsedDocument, ParsedSnapshot } from "./snapshot.js";
 import { mapStyle, mapAutoLayout, mapTextStyle } from "./style.js";
 
 const SKIP_TAGS = new Set([
@@ -14,21 +14,29 @@ const SKIP_TAGS = new Set([
   "TEMPLATE",
 ]);
 
+export interface SvgRequest {
+  assetId: string;
+  backendNodeId: number;
+}
+
 export interface BuildResult {
   root: H2FNode | null;
   imageUrls: Set<string>;
+  svgRequests: SvgRequest[];
 }
 
-export function buildIR(rawRoot: RawNode): BuildResult {
+export function buildIR(snapshot: ParsedSnapshot): BuildResult {
   const imageUrls = new Set<string>();
+  const svgRequests: SvgRequest[] = [];
+  const docs = snapshot.documents;
   let idCounter = 0;
   const nextId = () => `n${idCounter++}`;
 
-  function layoutOf(node: RawNode): Layout | null {
+  function layoutOf(node: RawNode, ox: number, oy: number): Layout | null {
     if (!node.layout) return null;
     const [x, y, width, height] = node.layout.bounds;
     if (width <= 0 || height <= 0) return null;
-    return { x, y, width, height };
+    return { x: x + ox, y: y + oy, width, height };
   }
 
   function isRendered(node: RawNode): boolean {
@@ -38,7 +46,6 @@ export function buildIR(rawRoot: RawNode): BuildResult {
     return true;
   }
 
-  /** 요소의 직접 자식 텍스트를 하나의 문자열로 수집 */
   function directText(node: RawNode): { text: string; bounds: RawNode["layout"] } | null {
     const parts: string[] = [];
     let textLayout: RawNode["layout"] | undefined;
@@ -55,8 +62,14 @@ export function buildIR(rawRoot: RawNode): BuildResult {
     return { text: parts.join("").trim(), bounds: textLayout };
   }
 
-  function buildText(parent: RawNode, text: string, tl: RawNode["layout"]): TextNode | null {
-    const layout = tl ? layoutFromRawLayout(tl) : layoutOf(parent);
+  function layoutFromRawLayout(rl: NonNullable<RawNode["layout"]>, ox: number, oy: number): Layout | null {
+    const [x, y, width, height] = rl.bounds;
+    if (width <= 0 || height <= 0) return null;
+    return { x: x + ox, y: y + oy, width, height };
+  }
+
+  function buildText(parent: RawNode, text: string, tl: RawNode["layout"], ox: number, oy: number): TextNode | null {
+    const layout = tl ? layoutFromRawLayout(tl, ox, oy) : layoutOf(parent, ox, oy);
     if (!layout) return null;
     const styleSource = parent.layout?.styles ?? {};
     return {
@@ -70,14 +83,8 @@ export function buildIR(rawRoot: RawNode): BuildResult {
     };
   }
 
-  function layoutFromRawLayout(rl: NonNullable<RawNode["layout"]>): Layout | null {
-    const [x, y, width, height] = rl.bounds;
-    if (width <= 0 || height <= 0) return null;
-    return { x, y, width, height };
-  }
-
-  function buildImage(node: RawNode): ImageNode | null {
-    const layout = layoutOf(node);
+  function buildImage(node: RawNode, ox: number, oy: number): ImageNode | null {
+    const layout = layoutOf(node, ox, oy);
     if (!layout) return null;
     const url = node.currentSourceURL || node.attributes["src"];
     if (!url) return null;
@@ -92,26 +99,44 @@ export function buildIR(rawRoot: RawNode): BuildResult {
     };
   }
 
-  /** 노드를 IR로. 렌더 안 되는 노드는 자식만 hoist */
-  function build(node: RawNode): H2FNode[] {
-    if (node.nodeType === 3) return []; // 텍스트는 부모가 처리
-    if (node.nodeType !== 1) {
-      // document 등: 자식만
-      return node.children.flatMap(build);
-    }
+  function buildSvg(node: RawNode, ox: number, oy: number): VectorNode | null {
+    const layout = layoutOf(node, ox, oy);
+    if (!layout) return null;
+    if (node.backendNodeId < 0) return null;
+    const assetId = `svg:${node.backendNodeId}`;
+    svgRequests.push({ assetId, backendNodeId: node.backendNodeId });
+    return {
+      id: nextId(),
+      name: "svg",
+      type: "vector",
+      layout,
+      style: {},
+      assetId,
+    };
+  }
+
+  function build(node: RawNode, ox: number, oy: number): H2FNode[] {
+    if (node.nodeType === 3) return [];
+    if (node.nodeType !== 1) return node.children.flatMap((c) => build(c, ox, oy));
     if (SKIP_TAGS.has(node.nodeName)) return [];
+
     if (!isRendered(node)) {
-      // display:contents 등 → 자식 hoist
       if (node.layout) return [];
-      return node.children.flatMap(build);
+      return node.children.flatMap((c) => build(c, ox, oy));
     }
 
-    const layout = layoutOf(node);
-    if (!layout) return node.children.flatMap(build);
+    const layout = layoutOf(node, ox, oy);
+    if (!layout) return node.children.flatMap((c) => build(c, ox, oy));
 
     if (node.nodeName === "IMG") {
-      const img = buildImage(node);
+      const img = buildImage(node, ox, oy);
       return img ? [img] : [];
+    }
+
+    // 인라인 SVG → 벡터 리프 (자식 무시)
+    if (node.nodeName.toLowerCase() === "svg") {
+      const svg = buildSvg(node, ox, oy);
+      return svg ? [svg] : [];
     }
 
     const style = mapStyle(node.layout!.styles);
@@ -120,16 +145,22 @@ export function buildIR(rawRoot: RawNode): BuildResult {
 
     const children: H2FNode[] = [];
 
-    // 직접 텍스트
     const dt = directText(node);
     if (dt) {
-      const t = buildText(node, dt.text, dt.bounds);
+      const t = buildText(node, dt.text, dt.bounds, ox, oy);
       if (t) children.push(t);
     }
 
-    // 자식 요소
     for (const c of node.children) {
-      if (c.nodeType === 1) children.push(...build(c));
+      if (c.nodeType === 1) children.push(...build(c, ox, oy));
+    }
+
+    // iframe 내용 문서 병합 (자식 좌표를 iframe 절대 위치만큼 오프셋)
+    if (node.nodeName === "IFRAME" && node.contentDocumentIndex != null) {
+      const inner = docs[node.contentDocumentIndex];
+      if (inner?.root) {
+        for (const m of buildDocRoot(inner, layout.x, layout.y)) children.push(m);
+      }
     }
 
     const hasVisibleStyle =
@@ -138,8 +169,9 @@ export function buildIR(rawRoot: RawNode): BuildResult {
       !!style.effects?.length ||
       !!style.cornerRadius;
 
-    // 빈 투명 리프는 노이즈 → 제거
     if (children.length === 0 && !hasVisibleStyle) return [];
+
+    if (node.nodeName === "IFRAME") style.clipsContent = true;
 
     const frame: FrameNode = {
       id: nextId(),
@@ -152,18 +184,23 @@ export function buildIR(rawRoot: RawNode): BuildResult {
     return [frame];
   }
 
-  const built = build(rawRoot);
-  // 최상위가 여러 개면 하나의 페이지 프레임으로 감쌈
+  /** 문서 root의 렌더 가능한 최상위 노드들을 offset 적용해 빌드 */
+  function buildDocRoot(doc: ParsedDocument, ox: number, oy: number): H2FNode[] {
+    if (!doc.root) return [];
+    return build(doc.root, ox, oy);
+  }
+
+  const built = buildDocRoot(docs[0], 0, 0);
+
   let root: H2FNode | null;
   if (built.length === 1) {
     root = built[0];
   } else if (built.length > 1) {
-    const bounds = unionBounds(built);
     root = {
       id: nextId(),
       name: "page",
       type: "frame",
-      layout: bounds,
+      layout: unionBounds(built),
       style: {},
       children: built,
     } as FrameNode;
@@ -171,7 +208,7 @@ export function buildIR(rawRoot: RawNode): BuildResult {
     root = null;
   }
 
-  return { root, imageUrls };
+  return { root, imageUrls, svgRequests };
 }
 
 function unionBounds(nodes: H2FNode[]): Layout {

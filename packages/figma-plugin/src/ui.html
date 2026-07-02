@@ -3,62 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <style>
-      body {
-        font-family: Inter, -apple-system, sans-serif;
-        font-size: 12px;
-        margin: 0;
-        padding: 16px;
-        color: #333;
-      }
-      h1 {
-        font-size: 14px;
-        margin: 0 0 12px;
-      }
-      .drop {
-        border: 2px dashed #c9c9c9;
-        border-radius: 8px;
-        padding: 20px;
-        text-align: center;
-        color: #888;
-        cursor: pointer;
-      }
-      .drop.over {
-        border-color: #4c5bff;
-        background: #f5f6ff;
-      }
-      textarea {
-        width: 100%;
-        height: 60px;
-        margin-top: 10px;
-        box-sizing: border-box;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        resize: vertical;
-      }
-      label.opt {
-        display: block;
-        margin: 8px 0;
-        cursor: pointer;
-      }
-      button {
-        width: 100%;
-        margin-top: 10px;
-        padding: 9px;
-        border: 0;
-        border-radius: 8px;
-        background: #4c5bff;
-        color: #fff;
-        font-weight: 600;
-        cursor: pointer;
-      }
-      button:disabled {
-        opacity: 0.5;
-      }
-      #status {
-        margin-top: 10px;
-        min-height: 14px;
-        color: #666;
-      }
+      body { font-family: Inter, -apple-system, sans-serif; font-size: 12px; margin: 0; padding: 16px; color: #333; }
+      h1 { font-size: 14px; margin: 0 0 12px; }
+      .drop { border: 2px dashed #c9c9c9; border-radius: 8px; padding: 20px; text-align: center; color: #888; cursor: pointer; }
+      .drop.over { border-color: #4c5bff; background: #f5f6ff; }
+      textarea { width: 100%; height: 56px; margin-top: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; resize: vertical; }
+      label.opt { display: flex; align-items: center; gap: 6px; margin: 8px 0; cursor: pointer; }
+      button.primary { width: 100%; margin-top: 10px; padding: 9px; border: 0; border-radius: 8px; background: #4c5bff; color: #fff; font-weight: 600; cursor: pointer; }
+      button:disabled { opacity: 0.5; }
+      .bridge { margin-top: 12px; padding: 10px; border: 1px solid #eee; border-radius: 8px; background: #fafafa; }
+      .bridge button { padding: 6px 10px; border: 1px solid #4c5bff; background: #fff; color: #4c5bff; border-radius: 6px; cursor: pointer; font-weight: 600; }
+      .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #bbb; margin-right: 6px; }
+      .dot.on { background: #2ecc71; }
+      #status { margin-top: 10px; min-height: 14px; color: #666; }
     </style>
   </head>
   <body>
@@ -74,7 +31,13 @@
     <label class="opt"><input type="checkbox" id="autolayout" /> Auto Layout 사용</label>
     <label class="opt"><input type="checkbox" id="styles" checked /> Local styles 생성</label>
 
-    <button id="import" disabled>임포트</button>
+    <button id="import" class="primary" disabled>임포트</button>
+
+    <div class="bridge">
+      <div><span class="dot" id="bridge-dot"></span><span id="bridge-status">브릿지: 연결 안 됨</span></div>
+      <button id="bridge-connect" style="margin-top:8px;">브릿지 연결 (자동 수신)</button>
+    </div>
+
     <div id="status"></div>
 
     <!-- SCRIPT -->

@@ -1,0 +1,25 @@
+{
+  "name": "@html2figma/bridge",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "h2f-bridge": "./dist/server.js"
+  },
+  "scripts": {
+    "build": "esbuild src/server.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/server.js --banner:js=\"#!/usr/bin/env node\"",
+    "start": "node dist/server.js",
+    "dev": "node --experimental-strip-types src/server.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.3"
+  }
+}

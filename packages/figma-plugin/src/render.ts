@@ -3,6 +3,7 @@ import type {
   Effect,
   FrameNode as IRFrame,
   GradientPaint,
+  H2FBundle,
   H2FDocument,
   H2FNode,
   ImageNode as IRImage,
@@ -11,6 +12,7 @@ import type {
   Stroke,
   TextNode as IRText,
   TextStyle as IRTextStyle,
+  VectorNode as IRVector,
 } from "@html2figma/shared";
 
 export interface RenderOptions {
@@ -32,11 +34,27 @@ export class Renderer {
   }
 
   async render(doc: H2FDocument): Promise<SceneNode> {
+    this.assets = doc.assets;
     await this.preloadFonts(doc.root);
     const node = await this.build(doc.root, doc.root.layout.x, doc.root.layout.y);
     node.name = doc.meta.title || "html2figma";
     figma.currentPage.appendChild(node);
     return node;
+  }
+
+  /** 번들: 각 문서를 가로로 나란히 배치 */
+  async renderBundle(bundle: H2FBundle): Promise<SceneNode[]> {
+    const nodes: SceneNode[] = [];
+    const GAP = 80;
+    let cursorX = 0;
+    for (const doc of bundle.documents) {
+      const node = await this.render(doc);
+      node.x = cursorX;
+      node.y = 0;
+      cursorX += ("width" in node ? node.width : doc.root.layout.width) + GAP;
+      nodes.push(node);
+    }
+    return nodes;
   }
 
   /* ---------------- 폰트 사전 로드 ---------------- */
@@ -88,9 +106,35 @@ export class Renderer {
         return this.buildText(node, parentX, parentY);
       case "image":
         return this.buildImage(node, parentX, parentY);
+      case "vector":
+        return this.buildVector(node, parentX, parentY);
       default:
         return this.buildFrame(node, parentX, parentY);
     }
+  }
+
+  private buildVector(node: IRVector, parentX: number, parentY: number): SceneNode {
+    const asset = this.assets[node.assetId];
+    if (asset && asset.kind === "svg") {
+      try {
+        const svgNode = figma.createNodeFromSvg(asset.markup);
+        svgNode.name = node.name || "svg";
+        if (node.layout.width > 0 && node.layout.height > 0) {
+          svgNode.rescale(1); // 정규화
+          svgNode.resize(Math.max(1, node.layout.width), Math.max(1, node.layout.height));
+        }
+        this.position(svgNode, node, parentX, parentY);
+        return svgNode;
+      } catch {
+        /* 파싱 실패 시 플레이스홀더로 대체 */
+      }
+    }
+    const rect = figma.createRectangle();
+    rect.name = node.name || "vector";
+    rect.resize(Math.max(1, node.layout.width), Math.max(1, node.layout.height));
+    rect.fills = [];
+    this.position(rect, node, parentX, parentY);
+    return rect;
   }
 
   private position(scene: SceneNode, node: H2FNode, parentX: number, parentY: number) {

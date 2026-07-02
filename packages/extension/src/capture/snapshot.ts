@@ -7,6 +7,11 @@ interface RareStringData {
   value: number[];
 }
 
+interface RareIntegerData {
+  index: number[];
+  value: number[];
+}
+
 interface NodeTreeSnapshot {
   parentIndex: number[];
   nodeType: number[];
@@ -15,7 +20,7 @@ interface NodeTreeSnapshot {
   backendNodeId: number[];
   attributes: number[][];
   currentSourceURL?: RareStringData;
-  contentDocumentIndex?: { index: number[]; value: number[] };
+  contentDocumentIndex?: RareIntegerData;
 }
 
 interface LayoutTreeSnapshot {
@@ -51,8 +56,11 @@ export interface RawNode {
   nodeType: number; // 1=element, 3=text, 9=document
   nodeName: string; // 대문자 태그명 또는 #text
   nodeValue: string;
+  backendNodeId: number;
   attributes: Record<string, string>;
   currentSourceURL?: string;
+  /** iframe 등: 내용 문서의 전역 인덱스 (documents 배열 기준) */
+  contentDocumentIndex?: number;
   layout?: RawLayout;
   children: RawNode[];
 }
@@ -61,7 +69,13 @@ export interface ParsedDocument {
   url: string;
   title: string;
   nodes: RawNode[]; // index 순
-  root: RawNode | null; // nodeType 9 (document) 또는 첫 노드
+  root: RawNode | null;
+}
+
+export interface ParsedSnapshot {
+  documents: ParsedDocument[];
+  url: string;
+  title: string;
 }
 
 function str(strings: string[], idx: number | undefined): string {
@@ -69,7 +83,7 @@ function str(strings: string[], idx: number | undefined): string {
   return strings[idx] ?? "";
 }
 
-function rareToMap(rare: RareStringData | undefined): Map<number, number> {
+function rareToMap(rare: { index: number[]; value: number[] } | undefined): Map<number, number> {
   const m = new Map<number, number>();
   if (!rare) return m;
   for (let i = 0; i < rare.index.length; i++) {
@@ -78,24 +92,17 @@ function rareToMap(rare: RareStringData | undefined): Map<number, number> {
   return m;
 }
 
-/** 메인 프레임(첫 document)만 파싱 */
-export function parseSnapshot(result: CaptureSnapshotResult): ParsedDocument {
-  const { documents, strings } = result;
-  const doc = documents[0];
-  if (!doc) {
-    return { url: "", title: "", nodes: [], root: null };
-  }
-
+function parseOneDocument(doc: DocumentSnapshot, strings: string[]): ParsedDocument {
   const { nodes, layout } = doc;
   const count = nodes.parentIndex.length;
 
-  // layout node index -> node index 역매핑
   const layoutByNode = new Map<number, number>();
   for (let li = 0; li < layout.nodeIndex.length; li++) {
     layoutByNode.set(layout.nodeIndex[li], li);
   }
 
   const currentSrc = rareToMap(nodes.currentSourceURL);
+  const contentDoc = rareToMap(nodes.contentDocumentIndex);
 
   const raw: RawNode[] = [];
   for (let i = 0; i < count; i++) {
@@ -111,13 +118,13 @@ export function parseSnapshot(result: CaptureSnapshotResult): ParsedDocument {
       nodeType: nodes.nodeType[i],
       nodeName: str(strings, nodes.nodeName[i]),
       nodeValue: str(strings, nodes.nodeValue[i]),
+      backendNodeId: nodes.backendNodeId?.[i] ?? -1,
       attributes: attrs,
       children: [],
     };
 
-    if (currentSrc.has(i)) {
-      node.currentSourceURL = str(strings, currentSrc.get(i)!);
-    }
+    if (currentSrc.has(i)) node.currentSourceURL = str(strings, currentSrc.get(i)!);
+    if (contentDoc.has(i)) node.contentDocumentIndex = contentDoc.get(i)!;
 
     const li = layoutByNode.get(i);
     if (li != null) {
@@ -138,7 +145,6 @@ export function parseSnapshot(result: CaptureSnapshotResult): ParsedDocument {
     raw.push(node);
   }
 
-  // 부모-자식 연결
   let root: RawNode | null = null;
   for (const n of raw) {
     if (n.parentIndex >= 0 && raw[n.parentIndex]) {
@@ -154,4 +160,22 @@ export function parseSnapshot(result: CaptureSnapshotResult): ParsedDocument {
     nodes: raw,
     root,
   };
+}
+
+/** 전체 document(메인 + iframe) 파싱 */
+export function parseAllDocuments(result: CaptureSnapshotResult): ParsedSnapshot {
+  const { documents, strings } = result;
+  const parsed = documents.map((d) => parseOneDocument(d, strings));
+  const main = parsed[0];
+  return {
+    documents: parsed,
+    url: main?.url ?? "",
+    title: main?.title ?? "",
+  };
+}
+
+/** 메인 문서만 반환 (하위호환) */
+export function parseSnapshot(result: CaptureSnapshotResult): ParsedDocument {
+  const all = parseAllDocuments(result);
+  return all.documents[0] ?? { url: "", title: "", nodes: [], root: null };
 }

@@ -16,6 +16,20 @@ export interface H2FDocument {
   assets: AssetMap;
 }
 
+/** 여러 페이지를 하나로 묶은 번들 (벌크 임포트) */
+export interface H2FBundle {
+  version: string;
+  kind: "bundle";
+  documents: H2FDocument[];
+}
+
+/** .h2f 파일에 담길 수 있는 최상위 형태 */
+export type H2FFile = H2FDocument | H2FBundle;
+
+export function isBundle(file: H2FFile): file is H2FBundle {
+  return (file as H2FBundle).kind === "bundle";
+}
+
 export interface CaptureMeta {
   url: string;
   title: string;
@@ -39,9 +53,9 @@ export type Theme = "light" | "dark" | "default";
 /* 노드                                                                */
 /* ------------------------------------------------------------------ */
 
-export type H2FNodeType = "frame" | "text" | "image";
+export type H2FNodeType = "frame" | "text" | "image" | "vector";
 
-export type H2FNode = FrameNode | TextNode | ImageNode;
+export type H2FNode = FrameNode | TextNode | ImageNode | VectorNode;
 
 export interface BaseNode {
   id: string;
@@ -64,6 +78,12 @@ export interface TextNode extends BaseNode {
 
 export interface ImageNode extends BaseNode {
   type: "image";
+  assetId: string;
+}
+
+/** 인라인 SVG를 벡터로 렌더 (assetId → SvgAsset) */
+export interface VectorNode extends BaseNode {
+  type: "vector";
   assetId: string;
 }
 
@@ -200,7 +220,7 @@ export interface AssetMap {
   [id: string]: Asset;
 }
 
-export type Asset = ImageAsset | FontAsset;
+export type Asset = ImageAsset | FontAsset | SvgAsset;
 
 export interface ImageAsset {
   kind: "image";
@@ -218,4 +238,10 @@ export interface FontAsset {
   style?: string;
   src?: string;
   dataBase64?: string;
+}
+
+export interface SvgAsset {
+  kind: "svg";
+  /** <svg>...</svg> 원본 마크업 */
+  markup: string;
 }

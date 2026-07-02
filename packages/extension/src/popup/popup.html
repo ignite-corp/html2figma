@@ -9,81 +9,36 @@
         color-scheme: light dark;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
-      body {
-        width: 320px;
-        margin: 0;
-        padding: 16px;
-        font-size: 13px;
-      }
-      h1 {
-        font-size: 15px;
-        margin: 0 0 12px;
-      }
-      label {
-        display: block;
-        margin: 10px 0 4px;
-        font-weight: 600;
-        color: #555;
-      }
-      select {
-        width: 100%;
-        padding: 6px;
-        border-radius: 6px;
-        border: 1px solid #ccc;
-      }
-      .row {
-        display: flex;
-        gap: 8px;
-      }
-      .row > div {
-        flex: 1;
-      }
-      button {
-        width: 100%;
-        margin-top: 14px;
-        padding: 9px;
-        border: 0;
-        border-radius: 8px;
-        background: #4c5bff;
-        color: #fff;
-        font-weight: 600;
-        cursor: pointer;
-      }
-      button:disabled {
-        opacity: 0.5;
-        cursor: default;
-      }
-      .exports {
-        display: none;
-        margin-top: 12px;
-      }
-      .exports button {
-        background: #eef0ff;
-        color: #2d3bd0;
-      }
-      #status {
-        margin-top: 12px;
-        min-height: 16px;
-        color: #666;
-      }
-      .bar {
-        height: 6px;
-        background: #eee;
-        border-radius: 3px;
-        overflow: hidden;
-        margin-top: 6px;
-      }
-      .bar > span {
-        display: block;
-        height: 100%;
-        width: 0;
-        background: #4c5bff;
-        transition: width 0.2s;
-      }
+      body { width: 340px; margin: 0; padding: 16px; font-size: 13px; }
+      h1 { font-size: 15px; margin: 0 0 12px; }
+      label { display: block; margin: 10px 0 4px; font-weight: 600; color: #555; }
+      select, textarea { width: 100%; box-sizing: border-box; padding: 6px; border-radius: 6px; border: 1px solid #ccc; }
+      textarea { height: 70px; resize: vertical; font-family: ui-monospace, monospace; font-size: 12px; }
+      .row { display: flex; gap: 8px; }
+      .row > div { flex: 1; }
+      .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+      .tabs button { flex: 1; padding: 7px; border: 1px solid #ccc; background: #f7f7f7; color: #333; border-radius: 6px; cursor: pointer; font-weight: 600; }
+      .tabs button.active { background: #4c5bff; color: #fff; border-color: #4c5bff; }
+      button.primary { width: 100%; margin-top: 14px; padding: 9px; border: 0; border-radius: 8px; background: #4c5bff; color: #fff; font-weight: 600; cursor: pointer; }
+      button:disabled { opacity: 0.5; cursor: default; }
+      label.opt { display: flex; align-items: center; gap: 6px; font-weight: 500; color: #444; margin-top: 10px; }
+      label.opt input { width: auto; }
+      .exports { display: none; margin-top: 12px; }
+      .exports button { width: 100%; margin-top: 8px; padding: 8px; border: 0; border-radius: 8px; background: #eef0ff; color: #2d3bd0; font-weight: 600; cursor: pointer; }
+      #status { margin-top: 12px; min-height: 16px; color: #666; }
+      .bar { height: 6px; background: #eee; border-radius: 3px; overflow: hidden; margin-top: 6px; }
+      .bar > span { display: block; height: 100%; width: 0; background: #4c5bff; transition: width 0.2s; }
+      .hidden { display: none; }
     </style>
   </head>
   <body>
     <h1>html2figma</h1>
+
+    <div class="tabs">
+      <button id="tab-single" class="active">현재 페이지</button>
+      <button id="tab-bulk">벌크(여러 URL)</button>
+    </div>
+
     <div class="row">
       <div>
         <label for="viewport">뷰포트</label>
@@ -103,7 +58,14 @@
       </div>
     </div>
 
-    <button id="capture">캡처</button>
+    <div id="bulk-panel" class="hidden">
+      <label for="urls">URL 목록 (줄바꿈으로 구분)</label>
+      <textarea id="urls" placeholder="https://example.com&#10;https://example.com/about"></textarea>
+    </div>
+
+    <label class="opt"><input type="checkbox" id="bridge" /> 캡처 후 Figma로 바로 전송(브릿지)</label>
+
+    <button id="capture" class="primary">캡처</button>
 
     <div id="status"></div>
     <div class="bar"><span id="progress"></span></div>
