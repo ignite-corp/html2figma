@@ -16,7 +16,7 @@ const codeBox = $<HTMLDivElement>("code-box");
 const codeEl = $<HTMLDivElement>("code");
 const relayUrlEl = $<HTMLInputElement>("relay-url");
 
-const DEFAULT_RELAY_URL = "ws://localhost:8787";
+const DEFAULT_RELAY_URL = "wss://html2figma-relay.onrender.com";
 let file: H2FFile | null = null;
 let ws: WebSocket | null = null;
 
