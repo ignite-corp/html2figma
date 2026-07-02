@@ -9,4 +9,8 @@ services:
     buildCommand: corepack enable && pnpm install --no-frozen-lockfile && pnpm --filter @html2figma/shared build && pnpm --filter @html2figma/bridge build
     startCommand: node packages/bridge/dist/server.js
     healthCheckPath: /health
+    envVars:
+      # corepack 이 CI에서 pnpm 다운로드 확인 프롬프트로 멈추지 않도록
+      - key: COREPACK_ENABLE_DOWNLOAD_PROMPT
+        value: "0"
     # Render 가 PORT 를 주입 → 서버가 process.env.PORT 로 바인딩함
