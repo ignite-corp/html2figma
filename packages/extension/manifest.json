@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "html2figma",
+  "version": "0.0.1",
+  "description": "웹페이지를 캡처해 편집 가능한 Figma 디자인으로 변환합니다.",
+  "permissions": ["debugger", "activeTab", "scripting", "storage", "downloads", "tabs"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "html2figma"
+  }
+}

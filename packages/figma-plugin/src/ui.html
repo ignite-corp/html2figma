@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      body {
+        font-family: Inter, -apple-system, sans-serif;
+        font-size: 12px;
+        margin: 0;
+        padding: 16px;
+        color: #333;
+      }
+      h1 {
+        font-size: 14px;
+        margin: 0 0 12px;
+      }
+      .drop {
+        border: 2px dashed #c9c9c9;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        color: #888;
+        cursor: pointer;
+      }
+      .drop.over {
+        border-color: #4c5bff;
+        background: #f5f6ff;
+      }
+      textarea {
+        width: 100%;
+        height: 60px;
+        margin-top: 10px;
+        box-sizing: border-box;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        resize: vertical;
+      }
+      label.opt {
+        display: block;
+        margin: 8px 0;
+        cursor: pointer;
+      }
+      button {
+        width: 100%;
+        margin-top: 10px;
+        padding: 9px;
+        border: 0;
+        border-radius: 8px;
+        background: #4c5bff;
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.5;
+      }
+      #status {
+        margin-top: 10px;
+        min-height: 14px;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>html2figma 임포트</h1>
+
+    <div class="drop" id="drop">
+      .h2f 파일을 드롭하거나 클릭해서 선택
+      <input type="file" id="file" accept=".h2f,application/json" hidden />
+    </div>
+
+    <textarea id="paste" placeholder="또는 클립보드 내용(JSON)을 여기에 붙여넣기"></textarea>
+
+    <label class="opt"><input type="checkbox" id="autolayout" /> Auto Layout 사용</label>
+    <label class="opt"><input type="checkbox" id="styles" checked /> Local styles 생성</label>
+
+    <button id="import" disabled>임포트</button>
+    <div id="status"></div>
+
+    <!-- SCRIPT -->
+  </body>
+</html>

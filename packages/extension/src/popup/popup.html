@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>html2figma</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      body {
+        width: 320px;
+        margin: 0;
+        padding: 16px;
+        font-size: 13px;
+      }
+      h1 {
+        font-size: 15px;
+        margin: 0 0 12px;
+      }
+      label {
+        display: block;
+        margin: 10px 0 4px;
+        font-weight: 600;
+        color: #555;
+      }
+      select {
+        width: 100%;
+        padding: 6px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+      }
+      .row > div {
+        flex: 1;
+      }
+      button {
+        width: 100%;
+        margin-top: 14px;
+        padding: 9px;
+        border: 0;
+        border-radius: 8px;
+        background: #4c5bff;
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .exports {
+        display: none;
+        margin-top: 12px;
+      }
+      .exports button {
+        background: #eef0ff;
+        color: #2d3bd0;
+      }
+      #status {
+        margin-top: 12px;
+        min-height: 16px;
+        color: #666;
+      }
+      .bar {
+        height: 6px;
+        background: #eee;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-top: 6px;
+      }
+      .bar > span {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: #4c5bff;
+        transition: width 0.2s;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>html2figma</h1>
+    <div class="row">
+      <div>
+        <label for="viewport">뷰포트</label>
+        <select id="viewport">
+          <option value="desktop">Desktop</option>
+          <option value="tablet">Tablet</option>
+          <option value="mobile">Mobile</option>
+        </select>
+      </div>
+      <div>
+        <label for="theme">테마</label>
+        <select id="theme">
+          <option value="default">Default</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </div>
+
+    <button id="capture">캡처</button>
+
+    <div id="status"></div>
+    <div class="bar"><span id="progress"></span></div>
+
+    <div class="exports" id="exports">
+      <button id="download">.h2f 파일 다운로드</button>
+      <button id="copy">클립보드에 복사</button>
+    </div>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

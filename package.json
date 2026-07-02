@@ -1,0 +1,20 @@
+{
+  "name": "html2figma",
+  "version": "0.0.1",
+  "private": true,
+  "description": "웹페이지를 Figma로 변환하는 크롬 익스텐션 + Figma 플러그인",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r build",
+    "build:shared": "pnpm --filter @html2figma/shared build",
+    "build:extension": "pnpm --filter @html2figma/extension build",
+    "build:plugin": "pnpm --filter @html2figma/figma-plugin build",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r clean"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.3"
+  },
+  "packageManager": "pnpm@10.33.0"
+}

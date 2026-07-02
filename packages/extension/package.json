@@ -1,0 +1,20 @@
+{
+  "name": "@html2figma/extension",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "esbuild test/pipeline.ts --bundle --platform=node --format=esm --outfile=dist-test/pipeline.mjs && node dist-test/pipeline.mjs",
+    "clean": "rm -rf dist dist-test"
+  },
+  "dependencies": {
+    "@html2figma/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.3"
+  }
+}
