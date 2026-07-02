@@ -8,9 +8,12 @@
   "networkAccess": {
     "allowedDomains": [
       "ws://localhost:8787",
-      "wss://html2figma-relay.workers.dev",
-      "wss://*.workers.dev"
+      "wss://*.workers.dev",
+      "wss://*.onrender.com",
+      "wss://*.fly.dev",
+      "wss://*.up.railway.app",
+      "wss://*.koyeb.app"
     ],
-    "reasoning": "direct-send 릴레이(로컬 또는 공개 Cloudflare Workers)로부터 캡처 결과를 페어링 코드로 수신"
+    "reasoning": "direct-send 릴레이(로컬 또는 공개 호스팅: Cloudflare/Render/Fly/Railway/Koyeb)로부터 캡처 결과를 페어링 코드로 수신"
   }
 }

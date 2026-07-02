@@ -66,8 +66,10 @@ pnpm --filter @html2figma/bridge test      # 릴레이 룸/페어링/격리 단�
 4. 익스텐션 팝업에서 **캡처 후 Figma로 바로 전송** 체크 → 코드 입력 → 캡처
 5. 플러그인이 자동 렌더
 
-### 공개(불특정 다수) — Cloudflare Workers
-- `packages/relay-cf`를 배포하면 로컬 서버 없이도 누구나 페어링으로 사용 가능.
+### 공개(불특정 다수) — 호스팅 릴레이
+- 페어링 릴레이를 인터넷에 올리면 로컬 서버 없이도 누구나 사용 가능.
+- **일반 Node 호스팅**(Render/Fly/Railway/Koyeb): `packages/bridge`가 `PORT`/`/health`를 지원. Cloudflare가 막힌 환경 권장.
+- **Cloudflare Workers**: `packages/relay-cf`(서버리스, `wss://…workers.dev`).
 - 배포·설정 절차는 [docs/PUBLISHING.md](docs/PUBLISHING.md) 참고. 플러그인/익스텐션의
   **릴레이 서버 설정**에 배포된 `wss://…` 주소를 입력하면 된다.
 - 릴레이는 무저장(ephemeral) · 룸 격리 · payload 크기 제한 · TTL · rate limit 을 적용한다.

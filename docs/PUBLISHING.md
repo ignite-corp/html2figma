@@ -41,25 +41,58 @@ pnpm --filter @html2figma/extension package
 
 ---
 
-## 3. direct-send 공개 릴레이 → Cloudflare Workers
+## 3. direct-send 공개 릴레이
 
-로컬 릴레이(`packages/bridge`)는 자체 호스팅/개발용입니다. **불특정 다수 공개**에는
-페어링 코드로 룸을 격리하는 Cloudflare Workers 릴레이(`packages/relay-cf`)를 배포하세요.
+공개 릴레이는 **두 가지 형태** 중 편한 것을 고르면 됩니다. 둘 다 동일한 룸/페어링 프로토콜입니다.
 
+- **A. Node 서버 (`packages/bridge`)** — Render/Fly/Railway/Koyeb 등 일반 호스팅. **Cloudflare가 막힌 환경 권장.**
+- **B. Cloudflare Workers (`packages/relay-cf`)** — 서버리스. 단, wrangler/대시보드가 VPN에 막히면 사용 불가.
+
+`packages/bridge`는 `PORT` 환경변수와 `GET /health` 헬스체크를 지원해 어떤 Node 호스팅에도 올라갑니다.
+
+### A-1. Render (git 연동, CLI 불필요 — 가장 무난)
+1. 코드를 GitHub 저장소에 push
+2. https://render.com → New → **Blueprint** → 저장소 선택 (루트 `render.yaml` 자동 인식)
+3. 무료 플랜으로 생성 → `https://html2figma-relay.onrender.com` 발급
+4. 릴레이 주소: `wss://html2figma-relay.onrender.com`
+   > 무료 플랜은 유휴 시 슬립 → 첫 연결에 수십 초 콜드스타트가 있을 수 있음(중계 시작되면 정상).
+
+### A-2. Fly.io (항상 켜짐, flyctl 필요)
 ```bash
-# Cloudflare 계정 필요 (무료 티어로 시작 가능)
+# 저장소 루트에서 (packages/bridge/Dockerfile + 루트 fly.toml 사용)
+flyctl launch --no-deploy   # 앱 생성
+flyctl deploy               # → https://html2figma-relay.fly.dev
+```
+- 릴레이 주소: `wss://html2figma-relay.fly.dev`
+- flyctl도 막히면 Render(A-1)를 쓰세요.
+
+### A-3. Railway / Koyeb 등
+- 루트 `packages/bridge/Dockerfile`로 컨테이너 배포하거나,
+- 빌드: `pnpm install && pnpm --filter @html2figma/shared build && pnpm --filter @html2figma/bridge build`,
+  시작: `node packages/bridge/dist/server.js` (플랫폼이 `PORT` 주입)
+
+### 로컬에서 Docker로 시험
+```bash
+docker build -f packages/bridge/Dockerfile -t h2f-relay .
+docker run -p 8080:8080 h2f-relay   # ws://localhost:8080
+```
+
+### B. Cloudflare Workers (대안)
+```bash
 cd packages/relay-cf
 npx wrangler login
 npx wrangler deploy          # → https://html2figma-relay.<계정>.workers.dev
 ```
+- 무료 플랜은 Durable Objects가 SQLite 백엔드만 지원 → `wrangler.toml`에 `new_sqlite_classes` 사용(설정 완료).
+- 릴레이 주소: `wss://html2figma-relay.<계정>.workers.dev`
 
-배포 후:
-1. 워커 URL의 `wss://` 주소를 확인 (예: `wss://html2figma-relay.xxxx.workers.dev`)
-2. `packages/figma-plugin/manifest.json`의 `networkAccess.allowedDomains`에 그 도메인이 포함되는지 확인(현재 `*.workers.dev` 허용).
-3. 사용자는 플러그인/익스텐션의 **릴레이 서버 설정**에 이 `wss://` 주소를 입력.
-   - 원하면 소스의 `DEFAULT_RELAY_URL`(플러그인 `ui.ts`, 익스텐션 `bridge.ts`)을 배포 URL로 바꿔 기본값으로 굳힐 수 있음.
+### 배포 후 공통
+1. 발급된 `wss://…` 주소를 플러그인/익스텐션의 **릴레이 서버 설정**에 입력.
+2. 플러그인 `manifest.json`의 `networkAccess.allowedDomains`에 그 도메인이 포함되는지 확인.
+   - `*.workers.dev`는 이미 허용. Render/Fly 등은 해당 도메인(`wss://…onrender.com`, `wss://…fly.dev`)을 추가.
+3. 원하면 소스의 `DEFAULT_RELAY_URL`(플러그인 `ui.ts`, 익스텐션 `bridge.ts`)을 배포 URL로 바꿔 기본값으로 굳힐 수 있음.
 
-### 릴레이 보안/프라이버시 특성
+### 릴레이 보안/프라이버시 특성 (A·B 공통)
 - 무저장(ephemeral): 페이로드를 디스크에 저장하지 않음.
 - 룸 격리: 6자리 페어링 코드로 연결된 당사자끼리만 데이터 교환.
 - payload 크기 제한(`RELAY_MAX_PAYLOAD_BYTES`), 전송 rate limit, 유휴 룸 TTL 자동 폐기.

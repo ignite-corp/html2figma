@@ -1,0 +1,12 @@
+# Render 배포 설정 (git 연동, CLI 불필요 — VPN이 특정 CLI를 막아도 웹 대시보드로 배포 가능)
+# https://render.com → New → Blueprint → 이 저장소 선택
+services:
+  - type: web
+    name: html2figma-relay
+    runtime: node
+    plan: free
+    # 모노레포 루트에서 shared + bridge 빌드
+    buildCommand: corepack enable && pnpm install --no-frozen-lockfile && pnpm --filter @html2figma/shared build && pnpm --filter @html2figma/bridge build
+    startCommand: node packages/bridge/dist/server.js
+    healthCheckPath: /health
+    # Render 가 PORT 를 주입 → 서버가 process.env.PORT 로 바인딩함

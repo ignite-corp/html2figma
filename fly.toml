@@ -1,0 +1,23 @@
+# Fly.io 배포 설정 — flyctl 사용. 항상 켜짐(무료 크레딧 소진 주의).
+#   flyctl launch --no-deploy   # 앱 생성(이 파일 사용)
+#   flyctl deploy               # packages/bridge/Dockerfile 로 빌드/배포
+# 빌드 컨텍스트는 저장소 루트여야 한다(모노레포).
+app = "html2figma-relay"
+primary_region = "nrt"
+
+[build]
+  dockerfile = "packages/bridge/Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/health"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
