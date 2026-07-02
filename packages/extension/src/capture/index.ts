@@ -259,7 +259,7 @@ export async function capturePage(
     const parsed = parseAllDocuments(snapshot, scale);
     if (!parsed.documents[0]?.root) throw new Error("캡처된 노드가 없습니다.");
 
-    const { root, imageUrls, svgRequests } = buildIR(parsed);
+    const { root, imageUrls, svgRequests, svgUrlRequests } = buildIR(parsed);
     if (!root) throw new Error("변환할 노드가 없습니다.");
 
     // DOMSnapshot 에 없는 ::before/::after 아이콘을 페이지에서 수집해 root 에 얹는다.
@@ -274,6 +274,12 @@ export async function capturePage(
       onProgress?.(`이미지 ${done}/${total}`, ratio);
     });
     Object.assign(assets, pseudoSvgAssets);
+
+    // background-image 로 지정된 SVG 를 마크업으로 받아 벡터 에셋으로 등록
+    for (const req of svgUrlRequests) {
+      const markup = await fetchSvgMarkup(req.url);
+      if (markup) assets[req.assetId] = { kind: "svg", markup };
+    }
 
     onProgress?.("SVG 수집", 0.85);
     const svgAssets = await collectSvgAssets(session, svgRequests);

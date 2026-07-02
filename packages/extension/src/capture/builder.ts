@@ -20,15 +20,23 @@ export interface SvgRequest {
   backendNodeId: number;
 }
 
+/** background-image 로 지정된 SVG(url). 벡터 자식으로 렌더하기 위해 마크업을 별도로 받는다. */
+export interface SvgUrlRequest {
+  assetId: string;
+  url: string;
+}
+
 export interface BuildResult {
   root: H2FNode | null;
   imageUrls: Set<string>;
   svgRequests: SvgRequest[];
+  svgUrlRequests: SvgUrlRequest[];
 }
 
 export function buildIR(snapshot: ParsedSnapshot): BuildResult {
   const imageUrls = new Set<string>();
   const svgRequests: SvgRequest[] = [];
+  const svgUrlRequests: SvgUrlRequest[] = [];
   const docs = snapshot.documents;
   let idCounter = 0;
   const nextId = () => `n${idCounter++}`;
@@ -155,6 +163,47 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
     };
   }
 
+  /**
+   * style.fills 의 background-image(image paint)를 처리한다.
+   * - raster url → fetch 대상(imageUrls)에 등록하고 fill 로 유지
+   * - SVG url → fill 에서 제거하고 벡터 자식 노드로 분리(background-size/position 반영, 요소 뒤에 배치)
+   */
+  function extractBackgroundImages(
+    node: RawNode,
+    style: ReturnType<typeof mapStyle>,
+    box: Layout
+  ): VectorNode[] {
+    if (!style.fills?.length) return [];
+    const vectors: VectorNode[] = [];
+    const kept: typeof style.fills = [];
+    const styles = node.layout!.styles;
+    for (const paint of style.fills) {
+      if (paint.type !== "image") {
+        kept.push(paint);
+        continue;
+      }
+      const url = paint.assetId;
+      if (isSvgUrl(url)) {
+        const id = nextId();
+        const assetId = `svgbg:${id}`;
+        svgUrlRequests.push({ assetId, url });
+        vectors.push({
+          id,
+          name: "bg-icon",
+          type: "vector",
+          layout: bgImageLayout(styles, box),
+          style: {},
+          assetId,
+        });
+      } else {
+        imageUrls.add(url);
+        kept.push(paint);
+      }
+    }
+    style.fills = kept.length ? kept : undefined;
+    return vectors;
+  }
+
   function build(node: RawNode, ox: number, oy: number): H2FNode[] {
     if (node.nodeType === 3) return [];
     if (node.nodeType !== 1) return node.children.flatMap((c) => build(c, ox, oy));
@@ -184,6 +233,10 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
     if (autoLayout) layout.autoLayout = autoLayout;
 
     const children: H2FNode[] = [];
+
+    // background-image 처리: raster url 은 fetch 대상에 등록, SVG url 은 벡터 자식으로 분리.
+    const bgVectors = extractBackgroundImages(node, style, layout);
+    for (const v of bgVectors) children.push(v);
 
     const dt = directText(node);
     if (dt) {
@@ -261,7 +314,46 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
     };
   }
 
-  return { root, imageUrls, svgRequests };
+  return { root, imageUrls, svgRequests, svgUrlRequests };
+}
+
+/** url 이 SVG 인지(확장자 또는 data:image/svg+xml) */
+function isSvgUrl(url: string): boolean {
+  return /^data:image\/svg\+xml/i.test(url) || /\.svg(\?|#|$)/i.test(url);
+}
+
+/** background-size/position 을 반영해 배경 이미지가 그려질 박스를 요소 박스 안에서 계산 */
+function bgImageLayout(styles: Record<string, string>, box: Layout): Layout {
+  const sizeRaw = (styles["background-size"] || "").trim();
+  const posRaw = (styles["background-position"] || "center").trim();
+
+  let w = box.width;
+  let h = box.height;
+  const sizeParts = sizeRaw.split(/\s+/);
+  const sw = parsePx(sizeParts[0]);
+  const sh = parsePx(sizeParts[1] ?? sizeParts[0]);
+  if (sw > 0 && sw <= box.width) w = sw;
+  if (sh > 0 && sh <= box.height) h = sh;
+
+  // position: center / left / right / top / bottom / px 근사 (기본 center)
+  const posParts = posRaw.split(/\s+/);
+  const px = alignPos(posParts[0], box.width, w);
+  const py = alignPos(posParts[1] ?? posParts[0] ?? "center", box.height, h, true);
+
+  return { x: box.x + px, y: box.y + py, width: w, height: h, order: box.order };
+}
+
+function alignPos(token: string | undefined, boxSize: number, itemSize: number, vertical = false): number {
+  const t = (token || "center").toLowerCase();
+  if (t === "center") return (boxSize - itemSize) / 2;
+  if (!vertical && t === "left") return 0;
+  if (!vertical && t === "right") return boxSize - itemSize;
+  if (vertical && t === "top") return 0;
+  if (vertical && t === "bottom") return boxSize - itemSize;
+  if (t.endsWith("%")) return ((boxSize - itemSize) * parseFloat(t)) / 100;
+  const n = parsePx(t);
+  if (!Number.isNaN(n) && /px$/.test(t)) return n;
+  return (boxSize - itemSize) / 2;
 }
 
 /**

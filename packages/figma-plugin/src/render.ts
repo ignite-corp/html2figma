@@ -200,9 +200,16 @@ export class Renderer {
     text.textCase = mapTextCase(node.text.textCase);
     text.fills = [solid(node.text.color)];
 
-    // 캡처된 박스 크기에 맞춤
-    text.textAutoResize = "HEIGHT";
-    text.resize(Math.max(1, node.layout.width), text.height);
+    // 캡처된 박스 크기에 맞춤. 단일 줄 텍스트는 대체 폰트 폭 차이로 마지막 글자가
+    // 줄바꿈되는 것을 막기 위해 자동 폭으로 둔다. 여러 줄(원본에서 이미 줄바꿈)만 폭 고정.
+    const lh = node.text.lineHeight ?? node.text.fontSize * 1.4;
+    const singleLine = !node.characters.includes("\n") && node.layout.height <= lh * 1.6;
+    if (singleLine) {
+      text.textAutoResize = "WIDTH_AND_HEIGHT";
+    } else {
+      text.textAutoResize = "HEIGHT";
+      text.resize(Math.max(1, node.layout.width + 2), text.height);
+    }
 
     if (this.opts.createStyles) {
       await this.applyTextStyle(text, node.text, font);
