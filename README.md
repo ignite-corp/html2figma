@@ -50,7 +50,7 @@ pnpm --filter @html2figma/bridge test      # 릴레이 룸/페어링/격리 단�
 
 1. `pnpm run build:plugin`
 2. Figma 데스크톱 → Plugins → Development → **Import plugin from manifest…**
-3. `packages/figma-plugin/dist/manifest.json` 선택
+3. `packages/figma-plugin/manifest.json` 선택 (루트·`dist/` 어느 쪽을 골라도 동작)
 4. 플러그인 실행 → `.h2f` 파일 드롭(또는 클립보드 JSON 붙여넣기) → **임포트**
    - 번들(`.h2f` bundle) 파일도 자동 감지해 여러 페이지를 나란히 렌더
 
