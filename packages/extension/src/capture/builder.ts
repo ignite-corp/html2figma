@@ -210,6 +210,16 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
     root = null;
   }
 
+  // 브라우저는 투명한 페이지 배경을 흰색 캔버스로 렌더한다.
+  // 루트에 불투명 배경이 없으면 흰색을 깔아 Figma 다크 캔버스가 비치는 것을 막는다.
+  if (root && root.type === "frame" && !hasOpaqueFill(root)) {
+    const f = root as FrameNode;
+    f.style = {
+      ...f.style,
+      fills: [{ type: "solid", color: { r: 1, g: 1, b: 1, a: 1 } }, ...(f.style.fills ?? [])],
+    };
+  }
+
   return { root, imageUrls, svgRequests };
 }
 
@@ -227,6 +237,14 @@ function sortByOrder(nodes: H2FNode[]): H2FNode[] {
       return oa === ob ? a.i - b.i : oa - ob;
     })
     .map((x) => x.n);
+}
+
+/** 루트 프레임에 캔버스를 완전히 가리는 불투명 배경이 있는지 */
+function hasOpaqueFill(node: H2FNode): boolean {
+  if (node.type !== "frame") return false;
+  const fills = (node as FrameNode).style.fills;
+  if (!fills || fills.length === 0) return false;
+  return fills.some((f) => (f.type === "solid" && f.color.a >= 1) || f.type === "image");
 }
 
 function unionBounds(nodes: H2FNode[]): Layout {

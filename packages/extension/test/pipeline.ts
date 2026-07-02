@@ -257,5 +257,30 @@ const hasText = (n: import("@html2figma/shared").H2FNode): boolean =>
   n.type === "text" ? true : n.type === "frame" ? n.children.some(hasText) : false;
 assert(!!last && hasText(last), "텍스트가 맨 위(마지막)로 와서 가려지지 않음");
 
+/* ---------------- 투명 루트 배경 → 흰색 기본값 케이스 ---------------- */
+// snapshot3 의 BODY 는 background 가 없다. 브라우저는 흰 캔버스로 보여주므로
+// 루트 프레임엔 불투명 흰색 배경이 깔려야 Figma 다크 캔버스가 비치지 않는다.
+const rootFills =
+  built3.root?.type === "frame" ? built3.root.style.fills ?? [] : [];
+const bottomFill = rootFills[0];
+assert(
+  bottomFill?.type === "solid" &&
+    bottomFill.color.r === 1 &&
+    bottomFill.color.g === 1 &&
+    bottomFill.color.b === 1 &&
+    bottomFill.color.a === 1,
+  "투명 루트에 흰색 불투명 배경이 기본으로 깔림"
+);
+
+// 반대로 루트가 이미 불투명 배경을 가지면(첫 케이스의 빨간 DIV) 흰색을 덮어쓰지 않는다.
+const redRootFills =
+  root?.type === "frame" ? root.style.fills ?? [] : [];
+assert(
+  redRootFills.some(
+    (f) => f.type === "solid" && f.color.r === 1 && f.color.g === 0 && f.color.b === 0
+  ),
+  "이미 불투명 배경이 있으면 원래 색을 유지(흰색으로 덮지 않음)"
+);
+
 console.log(failures === 0 ? "\n✅ 모든 테스트 통과" : `\n❌ ${failures}개 실패`);
 process.exit(failures === 0 ? 0 : 1);
