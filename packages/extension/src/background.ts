@@ -20,7 +20,7 @@ chrome.runtime.onConnect.addListener((port) => {
     const relay = async (file: import("@html2figma/shared").H2FFile): Promise<boolean> => {
       if (!msg.sendToBridge || !msg.bridgeCode) return false;
       const url = msg.relayUrl || (await getRelayUrl());
-      const res = await sendToRelay(file, msg.bridgeCode, url);
+      const res = await sendToRelay(file, msg.bridgeCode, url, { onProgress });
       if (!res.ok) post({ kind: "progress", step: `Figma 전송 실패: ${res.message ?? ""}`, ratio: 1 });
       return res.ok;
     };
