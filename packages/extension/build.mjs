@@ -30,6 +30,7 @@ await build({
 // 정적 파일 복사
 cpSync(resolve(__dirname, "manifest.json"), resolve(outdir, "manifest.json"));
 cpSync(resolve(__dirname, "src/popup/popup.html"), resolve(outdir, "popup.html"));
+cpSync(resolve(__dirname, "icons"), resolve(outdir, "icons"), { recursive: true });
 
 if (watch) {
   console.log("watch 모드는 아직 미지원 — 단발성 빌드 완료");

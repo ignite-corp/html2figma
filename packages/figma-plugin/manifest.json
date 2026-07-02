@@ -6,7 +6,11 @@
   "ui": "ui.html",
   "editorType": ["figma"],
   "networkAccess": {
-    "allowedDomains": ["ws://localhost:8787", "http://localhost:8787"],
-    "reasoning": "로컬 브릿지 서버로부터 캡처 결과를 자동 수신"
+    "allowedDomains": [
+      "ws://localhost:8787",
+      "wss://html2figma-relay.workers.dev",
+      "wss://*.workers.dev"
+    ],
+    "reasoning": "direct-send 릴레이(로컬 또는 공개 Cloudflare Workers)로부터 캡처 결과를 페어링 코드로 수신"
   }
 }

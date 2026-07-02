@@ -7,13 +7,15 @@
     "h2f-bridge": "./dist/server.js"
   },
   "scripts": {
-    "build": "esbuild src/server.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/server.js --banner:js=\"#!/usr/bin/env node\"",
+    "build": "esbuild src/server.ts --bundle --platform=node --format=esm --external:ws --outfile=dist/server.js --banner:js=\"#!/usr/bin/env node\"",
     "start": "node dist/server.js",
     "dev": "node --experimental-strip-types src/server.ts",
+    "test": "node test/relay.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@html2figma/shared": "workspace:*",
     "ws": "^8.18.0"
   },
   "devDependencies": {

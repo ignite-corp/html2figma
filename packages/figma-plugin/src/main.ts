@@ -8,13 +8,26 @@ interface ImportMessage {
   options: RenderOptions;
 }
 
-type UiMessage = ImportMessage | { type: "cancel" };
+type UiMessage =
+  | ImportMessage
+  | { type: "cancel" }
+  | { type: "get-config" }
+  | { type: "save-config"; relayUrl: string };
 
-figma.showUI(__html__, { width: 340, height: 440, title: "html2figma" });
+figma.showUI(__html__, { width: 340, height: 520, title: "html2figma" });
 
 figma.ui.onmessage = async (msg: UiMessage) => {
   if (msg.type === "cancel") {
     figma.closePlugin();
+    return;
+  }
+  if (msg.type === "get-config") {
+    const relayUrl = (await figma.clientStorage.getAsync("relayUrl")) as string | undefined;
+    figma.ui.postMessage({ type: "config", relayUrl: relayUrl ?? "" });
+    return;
+  }
+  if (msg.type === "save-config") {
+    await figma.clientStorage.setAsync("relayUrl", msg.relayUrl);
     return;
   }
   if (msg.type !== "import") return;

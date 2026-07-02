@@ -1,5 +1,5 @@
 import type { H2FDocument, H2FFile, Theme, ViewportPreset } from "@html2figma/shared";
-import { isBundle } from "@html2figma/shared";
+import { isBundle, normalizeCode } from "@html2figma/shared";
 import type { BackgroundToPopup, BulkRequest, CaptureRequest } from "../messages.js";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -11,6 +11,9 @@ const urlsEl = $<HTMLTextAreaElement>("urls");
 const viewportSel = $<HTMLSelectElement>("viewport");
 const themeSel = $<HTMLSelectElement>("theme");
 const bridgeChk = $<HTMLInputElement>("bridge");
+const bridgeFields = $<HTMLDivElement>("bridge-fields");
+const codeEl = $<HTMLInputElement>("code");
+const relayUrlEl = $<HTMLInputElement>("relay-url");
 const captureBtn = $<HTMLButtonElement>("capture");
 const statusEl = $<HTMLDivElement>("status");
 const progressEl = $<HTMLSpanElement>("progress");
@@ -20,6 +23,28 @@ const copyBtn = $<HTMLButtonElement>("copy");
 
 let mode: "single" | "bulk" = "single";
 let captured: H2FFile | null = null;
+
+// 저장된 페어링 코드/릴레이 URL 복원.
+chrome.storage.local.get(["bridgeCode", "relayUrl", "sendToBridge"]).then((s) => {
+  if (typeof s.bridgeCode === "string") codeEl.value = s.bridgeCode;
+  if (typeof s.relayUrl === "string") relayUrlEl.value = s.relayUrl;
+  if (s.sendToBridge) {
+    bridgeChk.checked = true;
+    bridgeFields.classList.remove("hidden");
+  }
+});
+
+bridgeChk.addEventListener("change", () => {
+  bridgeFields.classList.toggle("hidden", !bridgeChk.checked);
+  chrome.storage.local.set({ sendToBridge: bridgeChk.checked });
+});
+codeEl.addEventListener("input", () => {
+  codeEl.value = normalizeCode(codeEl.value).slice(0, 6);
+  chrome.storage.local.set({ bridgeCode: codeEl.value });
+});
+relayUrlEl.addEventListener("input", () => {
+  chrome.storage.local.set({ relayUrl: relayUrlEl.value.trim() });
+});
 
 function setMode(m: "single" | "bulk") {
   mode = m;
@@ -43,13 +68,21 @@ async function getActiveTab(): Promise<chrome.tabs.Tab | undefined> {
 captureBtn.addEventListener("click", async () => {
   captured = null;
   exportsEl.style.display = "none";
+
+  const sendToBridge = bridgeChk.checked;
+  const bridgeCode = normalizeCode(codeEl.value);
+  const relayUrl = relayUrlEl.value.trim() || undefined;
+  if (sendToBridge && bridgeCode.length !== 6) {
+    setStatus("Figma 페어링 코드 6자리를 입력하세요.");
+    return;
+  }
+
   captureBtn.disabled = true;
   setStatus("시작…", 0);
 
   const port = chrome.runtime.connect({ name: "capture" });
   const viewport = viewportSel.value as ViewportPreset;
   const theme = themeSel.value as Theme;
-  const sendToBridge = bridgeChk.checked;
 
   if (mode === "single") {
     const tab = await getActiveTab();
@@ -58,7 +91,15 @@ captureBtn.addEventListener("click", async () => {
       captureBtn.disabled = false;
       return;
     }
-    const req: CaptureRequest = { kind: "capture", tabId: tab.id, viewport, theme, sendToBridge };
+    const req: CaptureRequest = {
+      kind: "capture",
+      tabId: tab.id,
+      viewport,
+      theme,
+      sendToBridge,
+      bridgeCode,
+      relayUrl,
+    };
     port.postMessage(req);
   } else {
     const urls = urlsEl.value
@@ -70,7 +111,15 @@ captureBtn.addEventListener("click", async () => {
       captureBtn.disabled = false;
       return;
     }
-    const req: BulkRequest = { kind: "bulk", urls, viewport, theme, sendToBridge };
+    const req: BulkRequest = {
+      kind: "bulk",
+      urls,
+      viewport,
+      theme,
+      sendToBridge,
+      bridgeCode,
+      relayUrl,
+    };
     port.postMessage(req);
   }
 

@@ -4,3 +4,5 @@ dist-test/
 *.log
 .DS_Store
 *.h2f
+*.zip
+.wrangler/

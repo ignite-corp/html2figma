@@ -15,6 +15,11 @@
       .bridge button { padding: 6px 10px; border: 1px solid #4c5bff; background: #fff; color: #4c5bff; border-radius: 6px; cursor: pointer; font-weight: 600; }
       .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #bbb; margin-right: 6px; }
       .dot.on { background: #2ecc71; }
+      .code-box { margin-top: 10px; text-align: center; }
+      .code-label { font-size: 11px; color: #888; }
+      .code { font-family: ui-monospace, monospace; font-size: 28px; font-weight: 700; letter-spacing: 6px; color: #2d3bd0; margin-top: 2px; }
+      .bridge input { width: 100%; box-sizing: border-box; padding: 6px; border: 1px solid #ddd; border-radius: 6px; margin-top: 6px; font-size: 12px; }
+      .hidden { display: none; }
       #status { margin-top: 10px; min-height: 14px; color: #666; }
     </style>
   </head>
@@ -34,8 +39,17 @@
     <button id="import" class="primary" disabled>임포트</button>
 
     <div class="bridge">
-      <div><span class="dot" id="bridge-dot"></span><span id="bridge-status">브릿지: 연결 안 됨</span></div>
-      <button id="bridge-connect" style="margin-top:8px;">브릿지 연결 (자동 수신)</button>
+      <div><span class="dot" id="bridge-dot"></span><span id="bridge-status">Figma로 바로 받기: 연결 안 됨</span></div>
+      <div id="code-box" class="code-box hidden">
+        <div class="code-label">익스텐션에 이 코드를 입력하세요</div>
+        <div class="code" id="code"></div>
+      </div>
+      <button id="bridge-connect" style="margin-top:8px;">연결 (코드 받기)</button>
+      <details>
+        <summary style="cursor:pointer;color:#999;margin-top:8px;font-size:11px;">릴레이 서버 설정</summary>
+        <input id="relay-url" type="text" placeholder="ws://localhost:8787" autocomplete="off" />
+        <div style="color:#999;font-size:11px;margin-top:4px;">공개 릴레이 사용 시 wss:// 주소. 비우면 로컬 기본값.</div>
+      </details>
     </div>
 
     <div id="status"></div>

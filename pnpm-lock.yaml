@@ -17,6 +17,9 @@ importers:
 
   packages/bridge:
     dependencies:
+      '@html2figma/shared':
+        specifier: workspace:*
+        version: link:../shared
       ws:
         specifier: ^8.18.0
         version: 8.21.0
@@ -66,9 +69,25 @@ importers:
         specifier: ^5.6.3
         version: 5.9.3
 
+  packages/relay-cf:
+    dependencies:
+      '@html2figma/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20240909.0
+        version: 4.20260702.1
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
   packages/shared: {}
 
 packages:
+
+  '@cloudflare/workers-types@4.20260702.1':
+    resolution: {integrity: sha512-mOhf5TUEB1m2vPrxtqoIGfz0fUC9xyxRDx5gWHy5s+OCo6dcV+g7wI1R7gYCMFohhqF/2y2xeKVwMwCJjfn/WA==}
 
   '@esbuild/aix-ppc64@0.24.2':
     resolution: {integrity: sha512-thpVCb/rhxE/BnMLQ7GReQLLN8q9qbHmI55F4489/ByVg2aQaQ6kbcLb6FHkocZzQhxc4gx0sCk0tJkKBFzDhA==}
@@ -267,6 +286,8 @@ packages:
         optional: true
 
 snapshots:
+
+  '@cloudflare/workers-types@4.20260702.1': {}
 
   '@esbuild/aix-ppc64@0.24.2':
     optional: true

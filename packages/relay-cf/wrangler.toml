@@ -1,0 +1,11 @@
+name = "html2figma-relay"
+main = "src/worker.ts"
+compatibility_date = "2024-09-23"
+
+[[durable_objects.bindings]]
+name = "RELAY"
+class_name = "RelayRoom"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["RelayRoom"]

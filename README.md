@@ -7,10 +7,11 @@
 
 ```
 packages/
-  shared/        # .h2f IR 타입 + CSS→Figma 매핑 공용 유틸 (색상/뷰포트)
-  extension/     # 크롬 MV3: CDP 캡처 → IR 직렬화 → .h2f 다운로드 / 클립보드 / 브릿지 전송
-  figma-plugin/  # Figma: .h2f 파싱 → 노드 렌더 + local styles 생성
-  bridge/        # 로컬 WebSocket 릴레이: 익스텐션 → Figma 플러그인 direct send
+  shared/        # .h2f IR 타입 + CSS→Figma 매핑 공용 유틸 + 릴레이 프로토콜/허브
+  extension/     # 크롬 MV3: CDP 캡처 → IR 직렬화 → .h2f 다운로드 / 클립보드 / direct-send
+  figma-plugin/  # Figma: .h2f 파싱 → 노드 렌더 + local styles 생성 + 페어링 수신
+  bridge/        # 로컬 릴레이(자체호스팅/개발): 룸+페어링 코드 WebSocket 중계
+  relay-cf/      # 공개 릴레이: Cloudflare Workers + Durable Objects (룸 격리)
 ```
 
 ### 캡처 파이프라인 (extension)
@@ -27,9 +28,10 @@ packages/
 
 ```bash
 pnpm install
-pnpm run build          # 3개 패키지 모두 빌드
+pnpm run build          # 5개 패키지 모두 빌드
 pnpm run typecheck      # 타입 검사
 pnpm --filter @html2figma/extension test   # 캡처 파이프라인 단위 테스트
+pnpm --filter @html2figma/bridge test      # 릴레이 룸/페어링/격리 단위 테스트
 ```
 
 ## 크롬 익스텐션 로드
@@ -52,21 +54,38 @@ pnpm --filter @html2figma/extension test   # 캡처 파이프라인 단위 테�
 4. 플러그인 실행 → `.h2f` 파일 드롭(또는 클립보드 JSON 붙여넣기) → **임포트**
    - 번들(`.h2f` bundle) 파일도 자동 감지해 여러 페이지를 나란히 렌더
 
-## Figma로 direct send (브릿지)
+## Figma로 direct send (페어링 릴레이)
 
-파일/클립보드 없이 익스텐션 → 플러그인으로 곧바로 보낸다.
+파일/클립보드 없이 익스텐션 → 플러그인으로 곧바로 보낸다. **룸+페어링 코드**로 격리되어
+여러 사용자가 같은 릴레이를 써도 캡처가 섞이지 않는다.
 
+### 로컬(자체 호스팅/개발)
 1. `pnpm --filter @html2figma/bridge build` (최초 1회)
-2. 브릿지 실행: `pnpm --filter @html2figma/bridge start` → `ws://localhost:8787`
-3. Figma 플러그인 UI 에서 **브릿지 연결** 클릭 (자동 수신 대기)
-4. 익스텐션 팝업에서 **Figma 로 전송** 체크 후 캡처 → 플러그인이 자동 렌더
+2. 릴레이 실행: `pnpm --filter @html2figma/bridge start` → `ws://localhost:8787`
+3. Figma 플러그인 UI 에서 **연결 (코드 받기)** → 표시된 **6자리 코드** 확인
+4. 익스텐션 팝업에서 **캡처 후 Figma로 바로 전송** 체크 → 코드 입력 → 캡처
+5. 플러그인이 자동 렌더
+
+### 공개(불특정 다수) — Cloudflare Workers
+- `packages/relay-cf`를 배포하면 로컬 서버 없이도 누구나 페어링으로 사용 가능.
+- 배포·설정 절차는 [docs/PUBLISHING.md](docs/PUBLISHING.md) 참고. 플러그인/익스텐션의
+  **릴레이 서버 설정**에 배포된 `wss://…` 주소를 입력하면 된다.
+- 릴레이는 무저장(ephemeral) · 룸 격리 · payload 크기 제한 · TTL · rate limit 을 적용한다.
+
+> direct-send를 쓰지 않으면 릴레이가 전혀 필요 없다. 파일/클립보드만으로 모든 기능을 쓸 수 있다.
+
+## 공개 배포
+
+- 크롬 익스텐션: `pnpm --filter @html2figma/extension package` → `html2figma-extension.zip`을 Chrome Web Store에 업로드
+- Figma 플러그인: Figma 데스크톱에서 Publish → Figma Community
+- 상세 절차·개인정보 처리방침: [docs/PUBLISHING.md](docs/PUBLISHING.md), [docs/PRIVACY.md](docs/PRIVACY.md)
 
 ## 기능 범위 / 옵션
 
 - 레이아웃(절대좌표), 텍스트, 이미지, 배경색/그라디언트/이미지 배경
 - 보더(비대칭 두께 포함), border-radius, box-shadow, opacity, overflow clip
 - **iframe / shadow DOM** 병합 캡처, **인라인 SVG → 벡터** 렌더
-- **벌크 임포트**(다중 URL → 번들), **direct send** 로컬 브릿지
+- **벌크 임포트**(다중 URL → 번들), **direct send**(페어링 릴레이)
 - 다중 뷰포트(desktop/tablet/mobile), 다중 테마(light/dark)
 - 플러그인 옵션: **Auto Layout 사용**, **Local styles 생성** (기본 on)
 

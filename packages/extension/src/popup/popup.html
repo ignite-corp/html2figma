@@ -14,6 +14,8 @@
       label { display: block; margin: 10px 0 4px; font-weight: 600; color: #555; }
       select, textarea { width: 100%; box-sizing: border-box; padding: 6px; border-radius: 6px; border: 1px solid #ccc; }
       textarea { height: 70px; resize: vertical; font-family: ui-monospace, monospace; font-size: 12px; }
+      input[type="text"] { width: 100%; box-sizing: border-box; padding: 6px; border-radius: 6px; border: 1px solid #ccc; }
+      #code { text-transform: uppercase; letter-spacing: 2px; font-family: ui-monospace, monospace; font-size: 14px; text-align: center; }
       .row { display: flex; gap: 8px; }
       .row > div { flex: 1; }
       .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
@@ -63,7 +65,16 @@
       <textarea id="urls" placeholder="https://example.com&#10;https://example.com/about"></textarea>
     </div>
 
-    <label class="opt"><input type="checkbox" id="bridge" /> 캡처 후 Figma로 바로 전송(브릿지)</label>
+    <label class="opt"><input type="checkbox" id="bridge" /> 캡처 후 Figma로 바로 전송</label>
+    <div id="bridge-fields" class="hidden">
+      <label for="code">Figma 페어링 코드</label>
+      <input id="code" type="text" maxlength="7" placeholder="플러그인에 표시된 6자리 코드" autocomplete="off" />
+      <details>
+        <summary style="cursor:pointer;color:#888;margin-top:6px;">릴레이 서버 설정</summary>
+        <input id="relay-url" type="text" placeholder="ws://localhost:8787" autocomplete="off" style="margin-top:6px;" />
+        <div style="color:#999;font-size:11px;margin-top:4px;">공개 릴레이 사용 시 wss:// 주소를 입력하세요. 비우면 로컬 기본값.</div>
+      </details>
+    </div>
 
     <button id="capture" class="primary">캡처</button>
 
