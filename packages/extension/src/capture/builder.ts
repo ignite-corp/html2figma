@@ -36,7 +36,7 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
     if (!node.layout) return null;
     const [x, y, width, height] = node.layout.bounds;
     if (width <= 0 || height <= 0) return null;
-    return { x: x + ox, y: y + oy, width, height };
+    return { x: x + ox, y: y + oy, width, height, order: node.layout.paintOrder };
   }
 
   function isRendered(node: RawNode): boolean {
@@ -56,16 +56,18 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
           parts.push(v);
           textLayout = textLayout ?? c.layout;
         }
+      } else if (c.nodeType === 1 && c.nodeName === "BR") {
+        parts.push("\n");
       }
     }
-    if (!parts.length) return null;
-    return { text: parts.join("").trim(), bounds: textLayout };
+    if (!parts.join("").trim()) return null;
+    return { text: parts.join("").replace(/^\n+|\n+$/g, ""), bounds: textLayout };
   }
 
   function layoutFromRawLayout(rl: NonNullable<RawNode["layout"]>, ox: number, oy: number): Layout | null {
     const [x, y, width, height] = rl.bounds;
     if (width <= 0 || height <= 0) return null;
-    return { x: x + ox, y: y + oy, width, height };
+    return { x: x + ox, y: y + oy, width, height, order: rl.paintOrder };
   }
 
   function buildText(parent: RawNode, text: string, tl: RawNode["layout"], ox: number, oy: number): TextNode | null {
@@ -179,7 +181,7 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
       type: "frame",
       layout,
       style,
-      children,
+      children: sortByOrder(children),
     };
     return [frame];
   }
@@ -202,13 +204,29 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
       type: "frame",
       layout: unionBounds(built),
       style: {},
-      children: built,
+      children: sortByOrder(built),
     } as FrameNode;
   } else {
     root = null;
   }
 
   return { root, imageUrls, svgRequests };
+}
+
+/**
+ * 형제 노드를 스태킹(paint) 순서로 정렬한다. order 가 작을수록 먼저(아래) 그려진다.
+ * z-index/absolute 로 DOM 순서와 스태킹이 다른 경우에도 올바르게 겹치도록 한다.
+ * 안정 정렬이므로 order 가 같으면 DOM(삽입) 순서를 유지한다.
+ */
+function sortByOrder(nodes: H2FNode[]): H2FNode[] {
+  return nodes
+    .map((n, i) => ({ n, i }))
+    .sort((a, b) => {
+      const oa = a.n.layout.order ?? 0;
+      const ob = b.n.layout.order ?? 0;
+      return oa === ob ? a.i - b.i : oa - ob;
+    })
+    .map((x) => x.n);
 }
 
 function unionBounds(nodes: H2FNode[]): Layout {

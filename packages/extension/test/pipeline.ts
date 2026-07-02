@@ -192,5 +192,70 @@ const findRed = (n: import("@html2figma/shared").H2FNode) => {
 if (built2.root) findRed(built2.root);
 assert(iframeChildFound, "iframe 내부 DIV가 절대좌표(105,55)로 병합됨");
 
+/* ---------------- paint order(z-index 스태킹) 케이스 ---------------- */
+console.log("\npaint order:");
+
+const s3: string[] = [""];
+const intern3 = (s: string) => {
+  const i = s3.indexOf(s);
+  if (i >= 0) return i;
+  s3.push(s);
+  return s3.length - 1;
+};
+const styleRow3 = (map: Record<string, string>) =>
+  COMPUTED_STYLES.map((name) => intern3(map[name] ?? ""));
+
+// BODY > [P(텍스트, 위에 와야 함), DIV(불투명 배경, DOM상 나중이지만 아래에 깔림)]
+// DOM 순서: P 먼저, overlay 나중. 하지만 paintOrder 는 overlay(2) < P(5) 이므로
+// overlay 가 아래에 깔려야 한다. sortByOrder 후 children[0]=overlay, 마지막=P.
+const snapshot3: CaptureSnapshotResult = {
+  strings: s3,
+  documents: [
+    {
+      documentURL: intern3("https://z.com"),
+      title: intern3("Z"),
+      nodes: {
+        parentIndex: [-1, 0, 1, 0],
+        nodeType: [1, 1, 3, 1],
+        nodeName: [intern3("BODY"), intern3("P"), intern3("#text"), intern3("DIV")],
+        nodeValue: [intern3(""), intern3(""), intern3("위에"), intern3("")],
+        backendNodeId: [1, 2, 3, 4],
+        attributes: [[], [], [], []],
+      },
+      layout: {
+        nodeIndex: [0, 1, 2, 3],
+        styles: [
+          styleRow3({ display: "block" }),
+          styleRow3({ display: "block", color: "rgb(0,0,0)", "font-size": "16px" }),
+          styleRow3({}),
+          styleRow3({ display: "block", "background-color": "rgb(0,0,0)" }),
+        ],
+        bounds: [
+          [0, 0, 400, 200],
+          [20, 40, 200, 30],
+          [20, 40, 200, 30],
+          [0, 0, 400, 200],
+        ],
+        text: [intern3(""), intern3(""), intern3("위에"), intern3("")],
+        paintOrders: [0, 5, 6, 2],
+      },
+    },
+  ],
+} as unknown as CaptureSnapshotResult;
+
+const built3 = buildIR(parseAllDocuments(snapshot3));
+const bodyKids = built3.root?.type === "frame" ? built3.root.children : [];
+assert(bodyKids.length === 2, "BODY 자식 2개");
+const first = bodyKids[0];
+const last = bodyKids[bodyKids.length - 1];
+assert(
+  first?.type === "frame" && (first.layout.order ?? 0) < (last?.layout.order ?? 0),
+  "낮은 paintOrder(불투명 overlay)가 먼저(아래)로 정렬됨"
+);
+// 마지막(위에 그려지는) 노드는 텍스트를 품은 P 여야 함
+const hasText = (n: import("@html2figma/shared").H2FNode): boolean =>
+  n.type === "text" ? true : n.type === "frame" ? n.children.some(hasText) : false;
+assert(!!last && hasText(last), "텍스트가 맨 위(마지막)로 와서 가려지지 않음");
+
 console.log(failures === 0 ? "\n✅ 모든 테스트 통과" : `\n❌ ${failures}개 실패`);
 process.exit(failures === 0 ? 0 : 1);

@@ -28,6 +28,7 @@ interface LayoutTreeSnapshot {
   styles: number[][];
   bounds: number[][];
   text: number[];
+  paintOrders?: number[];
 }
 
 interface DocumentSnapshot {
@@ -48,6 +49,8 @@ export interface RawLayout {
   bounds: [number, number, number, number]; // x, y, w, h
   styles: ComputedStyleMap;
   text?: string;
+  /** DOMSnapshot paintOrder (클수록 위에 그려짐). 없으면 undefined. */
+  paintOrder?: number;
 }
 
 export interface RawNode {
@@ -139,6 +142,7 @@ function parseOneDocument(doc: DocumentSnapshot, strings: string[]): ParsedDocum
         bounds: [b[0], b[1], b[2], b[3]],
         styles,
         text: str(strings, layout.text[li]) || undefined,
+        paintOrder: layout.paintOrders?.[li],
       };
     }
 

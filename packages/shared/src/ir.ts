@@ -99,6 +99,12 @@ export interface Layout {
   height: number;
   /** flex/grid → Auto Layout 매핑 (Phase 9) */
   autoLayout?: AutoLayout;
+  /**
+   * 스태킹(paint) 순서. 값이 작을수록 먼저(아래) 그려진다.
+   * DOMSnapshot 의 paintOrders 에서 유래하며, z-index/absolute 로 인해
+   * DOM 순서와 다를 수 있으므로 렌더 시 이 값으로 형제를 정렬한다.
+   */
+  order?: number;
 }
 
 export interface AutoLayout {
