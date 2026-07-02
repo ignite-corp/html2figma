@@ -282,5 +282,63 @@ assert(
   "이미 불투명 배경이 있으면 원래 색을 유지(흰색으로 덮지 않음)"
 );
 
+/* ---------------- input placeholder → 텍스트 노드 합성 케이스 ---------------- */
+console.log("\ninput placeholder:");
+const s4: string[] = [""];
+const intern4 = (s: string) => {
+  const i = s4.indexOf(s);
+  if (i >= 0) return i;
+  s4.push(s);
+  return s4.length - 1;
+};
+const styleRow4 = (map: Record<string, string>) =>
+  COMPUTED_STYLES.map((name) => intern4(map[name] ?? ""));
+
+const snapshot4: CaptureSnapshotResult = {
+  strings: s4,
+  documents: [
+    {
+      documentURL: intern4("https://i.com"),
+      title: intern4("I"),
+      nodes: {
+        parentIndex: [-1, 0],
+        nodeType: [1, 1],
+        nodeName: [intern4("BODY"), intern4("INPUT")],
+        nodeValue: [intern4(""), intern4("")],
+        backendNodeId: [1, 2],
+        attributes: [[], [intern4("placeholder"), intern4("무엇이 궁금하신가요?")]],
+      },
+      layout: {
+        nodeIndex: [0, 1],
+        styles: [
+          styleRow4({ display: "block" }),
+          styleRow4({ display: "block", color: "rgb(0,0,0)", "font-size": "16px", "padding-left": "20px" }),
+        ],
+        bounds: [
+          [0, 0, 800, 80],
+          [0, 20, 700, 48],
+        ],
+        text: [intern4(""), intern4("")],
+      },
+    },
+  ],
+} as unknown as CaptureSnapshotResult;
+
+const built4 = buildIR(parseAllDocuments(snapshot4));
+const findText = (n: import("@html2figma/shared").H2FNode): import("@html2figma/shared").H2FNode | null => {
+  if (n.type === "text") return n;
+  if (n.type === "frame") for (const c of n.children) { const r = findText(c); if (r) return r; }
+  return null;
+};
+const phText = built4.root ? findText(built4.root) : null;
+assert(
+  !!phText && phText.type === "text" && phText.characters === "무엇이 궁금하신가요?",
+  "input placeholder 가 텍스트 노드로 합성됨"
+);
+assert(
+  !!phText && phText.type === "text" && phText.layout.x === 20,
+  "placeholder 텍스트가 padding-left 만큼 안쪽으로 배치됨"
+);
+
 console.log(failures === 0 ? "\n✅ 모든 테스트 통과" : `\n❌ ${failures}개 실패`);
 process.exit(failures === 0 ? 0 : 1);

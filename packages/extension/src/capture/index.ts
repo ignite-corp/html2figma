@@ -20,6 +20,24 @@ export interface CaptureOptions {
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** 문서 전체 높이(CSS px)를 측정. 실패 시 fallback 반환. 폭주 방지를 위해 상한을 둔다. */
+const MAX_PAGE_HEIGHT = 30000;
+async function measureFullHeight(
+  session: CdpSession,
+  fallback: number
+): Promise<number> {
+  try {
+    const m = await session.send<{
+      cssContentSize?: { height: number };
+      contentSize?: { height: number };
+    }>("Page.getLayoutMetrics");
+    const h = m?.cssContentSize?.height ?? m?.contentSize?.height ?? fallback;
+    return Math.min(Math.max(Math.ceil(h), fallback), MAX_PAGE_HEIGHT);
+  } catch {
+    return fallback;
+  }
+}
+
 async function collectSvgAssets(
   session: CdpSession,
   requests: SvgRequest[]
@@ -72,6 +90,19 @@ export async function capturePage(
     }
 
     await delay(400);
+
+    // 전체 페이지(스크롤 영역 포함)를 캡처하기 위해 문서 실제 높이만큼 뷰포트를 확장.
+    // 고정 뷰포트로만 스냅샷을 뜨면 접힌 영역(footer 등)이 잘린다.
+    const fullHeight = await measureFullHeight(session, vp.height);
+    if (fullHeight > vp.height) {
+      await session.send("Emulation.setDeviceMetricsOverride", {
+        width: vp.width,
+        height: fullHeight,
+        deviceScaleFactor: vp.deviceScaleFactor,
+        mobile: preset === "mobile",
+      });
+      await delay(300);
+    }
 
     onProgress?.("페이지 캡처", 0.3);
     const snapshot = await session.send<CaptureSnapshotResult>(

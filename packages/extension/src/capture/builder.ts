@@ -1,6 +1,7 @@
 import type { H2FNode, FrameNode, TextNode, ImageNode, VectorNode, Layout } from "@html2figma/shared";
 import type { RawNode, ParsedDocument, ParsedSnapshot } from "./snapshot.js";
 import { mapStyle, mapAutoLayout, mapTextStyle } from "./style.js";
+import { parsePx } from "@html2figma/shared";
 
 const SKIP_TAGS = new Set([
   "SCRIPT",
@@ -85,6 +86,43 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
     };
   }
 
+  /** input/textarea 의 value 또는 placeholder 를 텍스트 노드로 합성 (내부 자식 텍스트가 없으므로 유실 방지) */
+  function buildInputText(node: RawNode, ox: number, oy: number): TextNode | null {
+    if (node.nodeName !== "INPUT" && node.nodeName !== "TEXTAREA") return null;
+    const value = node.attributes["value"];
+    const placeholder = node.attributes["placeholder"];
+    const hasValue = !!value && value.trim().length > 0;
+    const text = hasValue ? value : placeholder;
+    if (!text || !text.trim()) return null;
+
+    const box = layoutOf(node, ox, oy);
+    if (!box) return null;
+    const styles = node.layout!.styles;
+    const padL = parsePx(styles["padding-left"]);
+    const padR = parsePx(styles["padding-right"]);
+    const padT = parsePx(styles["padding-top"]);
+    const padB = parsePx(styles["padding-bottom"]);
+    const ts = mapTextStyle(styles);
+    // placeholder 는 보통 흐린 회색(::placeholder). 별도 캡처가 어려우므로 근사값 사용.
+    const color = hasValue ? ts.color : { r: 0.46, g: 0.46, b: 0.46, a: 1 };
+
+    return {
+      id: nextId(),
+      name: text.slice(0, 24) || "text",
+      type: "text",
+      layout: {
+        x: box.x + padL,
+        y: box.y + padT,
+        width: Math.max(1, box.width - padL - padR),
+        height: Math.max(1, box.height - padT - padB),
+        order: box.order,
+      },
+      style: {},
+      characters: text,
+      text: { ...ts, color },
+    };
+  }
+
   function buildImage(node: RawNode, ox: number, oy: number): ImageNode | null {
     const layout = layoutOf(node, ox, oy);
     if (!layout) return null;
@@ -152,6 +190,9 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
       const t = buildText(node, dt.text, dt.bounds, ox, oy);
       if (t) children.push(t);
     }
+
+    const it = buildInputText(node, ox, oy);
+    if (it) children.push(it);
 
     for (const c of node.children) {
       if (c.nodeType === 1) children.push(...build(c, ox, oy));
