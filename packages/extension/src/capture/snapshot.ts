@@ -95,7 +95,11 @@ function rareToMap(rare: { index: number[]; value: number[] } | undefined): Map<
   return m;
 }
 
-function parseOneDocument(doc: DocumentSnapshot, strings: string[]): ParsedDocument {
+function parseOneDocument(
+  doc: DocumentSnapshot,
+  strings: string[],
+  scale: number
+): ParsedDocument {
   const { nodes, layout } = doc;
   const count = nodes.parentIndex.length;
 
@@ -138,8 +142,9 @@ function parseOneDocument(doc: DocumentSnapshot, strings: string[]): ParsedDocum
         const v = str(strings, styleIdx[s]);
         if (v) styles[COMPUTED_STYLES[s]] = v;
       }
+      // bounds 는 device px 로 오므로 CSS px 로 정규화(font-size 와 단위 일치).
       node.layout = {
-        bounds: [b[0], b[1], b[2], b[3]],
+        bounds: [b[0] / scale, b[1] / scale, b[2] / scale, b[3] / scale],
         styles,
         text: str(strings, layout.text[li]) || undefined,
         paintOrder: layout.paintOrders?.[li],
@@ -166,10 +171,13 @@ function parseOneDocument(doc: DocumentSnapshot, strings: string[]): ParsedDocum
   };
 }
 
-/** 전체 document(메인 + iframe) 파싱 */
-export function parseAllDocuments(result: CaptureSnapshotResult): ParsedSnapshot {
+/** 전체 document(메인 + iframe) 파싱. scale 은 device px→CSS px 정규화 배율(기본 1). */
+export function parseAllDocuments(
+  result: CaptureSnapshotResult,
+  scale = 1
+): ParsedSnapshot {
   const { documents, strings } = result;
-  const parsed = documents.map((d) => parseOneDocument(d, strings));
+  const parsed = documents.map((d) => parseOneDocument(d, strings, scale));
   const main = parsed[0];
   return {
     documents: parsed,

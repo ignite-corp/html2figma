@@ -340,5 +340,19 @@ assert(
   "placeholder 텍스트가 padding-left 만큼 안쪽으로 배치됨"
 );
 
+/* ---------------- device px → CSS px 배율 정규화 케이스 ---------------- */
+console.log("\nscale 정규화:");
+const scaled = parseAllDocuments(snapshot4, 2); // DPR 2 가정
+const bodyNode = scaled.documents[0].root;
+assert(
+  !!bodyNode?.layout && bodyNode.layout.bounds[2] === 400,
+  "scale=2 일 때 bounds(800)가 CSS px(400)로 정규화됨"
+);
+const noScale = parseAllDocuments(snapshot4);
+assert(
+  noScale.documents[0].root?.layout?.bounds[2] === 800,
+  "scale 기본값 1 이면 bounds 그대로(800)"
+);
+
 console.log(failures === 0 ? "\n✅ 모든 테스트 통과" : `\n❌ ${failures}개 실패`);
 process.exit(failures === 0 ? 0 : 1);

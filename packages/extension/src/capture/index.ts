@@ -20,21 +20,31 @@ export interface CaptureOptions {
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** 문서 전체 높이(CSS px)를 측정. 실패 시 fallback 반환. 폭주 방지를 위해 상한을 둔다. */
+/** 문서 전체 높이(CSS px)와 device px 배율(DPR)을 측정. 실패 시 fallback. 폭주 방지 상한. */
 const MAX_PAGE_HEIGHT = 30000;
-async function measureFullHeight(
+async function measurePage(
   session: CdpSession,
-  fallback: number
-): Promise<number> {
+  fallbackHeight: number
+): Promise<{ cssHeight: number; scale: number }> {
   try {
     const m = await session.send<{
-      cssContentSize?: { height: number };
-      contentSize?: { height: number };
+      cssContentSize?: { width: number; height: number };
+      contentSize?: { width: number; height: number };
     }>("Page.getLayoutMetrics");
-    const h = m?.cssContentSize?.height ?? m?.contentSize?.height ?? fallback;
-    return Math.min(Math.max(Math.ceil(h), fallback), MAX_PAGE_HEIGHT);
+    const cssH = m?.cssContentSize?.height ?? m?.contentSize?.height ?? fallbackHeight;
+    const cssHeight = Math.min(Math.max(Math.ceil(cssH), fallbackHeight), MAX_PAGE_HEIGHT);
+    // DOMSnapshot bounds 는 device px(레티나면 ×DPR)로 오는데 font-size 는 CSS px 이다.
+    // 두 값을 일치시키기 위해 배율을 구해 좌표를 CSS px 로 정규화한다.
+    let scale = 1;
+    const devH = m?.contentSize?.height;
+    const cssContentH = m?.cssContentSize?.height;
+    if (devH && cssContentH && cssContentH > 0) {
+      scale = devH / cssContentH;
+    }
+    if (!Number.isFinite(scale) || scale < 1) scale = 1;
+    return { cssHeight, scale };
   } catch {
-    return fallback;
+    return { cssHeight: fallbackHeight, scale: 1 };
   }
 }
 
@@ -93,7 +103,7 @@ export async function capturePage(
 
     // 전체 페이지(스크롤 영역 포함)를 캡처하기 위해 문서 실제 높이만큼 뷰포트를 확장.
     // 고정 뷰포트로만 스냅샷을 뜨면 접힌 영역(footer 등)이 잘린다.
-    const fullHeight = await measureFullHeight(session, vp.height);
+    const { cssHeight: fullHeight, scale } = await measurePage(session, vp.height);
     if (fullHeight > vp.height) {
       await session.send("Emulation.setDeviceMetricsOverride", {
         width: vp.width,
@@ -115,7 +125,7 @@ export async function capturePage(
     );
 
     onProgress?.("트리 분석", 0.5);
-    const parsed = parseAllDocuments(snapshot);
+    const parsed = parseAllDocuments(snapshot, scale);
     if (!parsed.documents[0]?.root) throw new Error("캡처된 노드가 없습니다.");
 
     const { root, imageUrls, svgRequests } = buildIR(parsed);
