@@ -2,6 +2,22 @@ import type { H2FNode, FrameNode, TextNode, VectorNode, Layout } from "@html2fig
 import type { RawNode, ParsedDocument, ParsedSnapshot } from "./snapshot.js";
 import { mapStyle, mapAutoLayout, mapTextStyle } from "./style.js";
 import { parsePx } from "@html2figma/shared";
+import {
+  isSvgUrl,
+  bgImageLayout,
+  sortByOrder,
+  hasOpaqueFill,
+  unionBounds,
+} from "./builderHelpers.js";
+import {
+  type Clip,
+  NO_CLIP,
+  clipsOverflow,
+  edgesOf,
+  intersectClip,
+  intersectClipBox,
+  isOutsideClip,
+} from "./clip.js";
 
 const SKIP_TAGS = new Set([
   "SCRIPT",
@@ -364,137 +380,4 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
   }
 
   return { root, imageUrls, svgRequests, svgUrlRequests, hostFrames };
-}
-
-/** url 이 SVG 인지(확장자 또는 data:image/svg+xml) */
-function isSvgUrl(url: string): boolean {
-  return /^data:image\/svg\+xml/i.test(url) || /\.svg(\?|#|$)/i.test(url);
-}
-
-/* ---------------- 오버플로 클리핑(브라우저 overflow:hidden 재현) ---------------- */
-
-/** 절대 좌표계의 클립 사각형(경계). 무한대는 해당 축이 잘리지 않음을 뜻한다. */
-type Clip = { left: number; top: number; right: number; bottom: number };
-const NO_CLIP: Clip = { left: -Infinity, top: -Infinity, right: Infinity, bottom: Infinity };
-
-function isClipVal(v: string | undefined): boolean {
-  if (!v) return false;
-  return v.includes("hidden") || v.includes("clip") || v.includes("scroll") || v.includes("auto");
-}
-
-function clipsOverflow(styles: Record<string, string>): boolean {
-  const ox = styles["overflow-x"] ?? styles["overflow"];
-  const oy = styles["overflow-y"] ?? styles["overflow"];
-  return isClipVal(ox) || isClipVal(oy);
-}
-
-function edgesOf(rl: NonNullable<RawNode["layout"]>, ox: number, oy: number): Clip {
-  const [x, y, w, h] = rl.bounds;
-  return { left: x + ox, top: y + oy, right: x + ox + w, bottom: y + oy + h };
-}
-
-/** overflow 가 잘리는 축만 클립 경계를 요소 박스로 좁힌다. */
-function intersectClip(clip: Clip, box: Clip, styles: Record<string, string>): Clip {
-  const cx = isClipVal(styles["overflow-x"] ?? styles["overflow"]);
-  const cy = isClipVal(styles["overflow-y"] ?? styles["overflow"]);
-  return {
-    left: cx ? Math.max(clip.left, box.left) : clip.left,
-    right: cx ? Math.min(clip.right, box.right) : clip.right,
-    top: cy ? Math.max(clip.top, box.top) : clip.top,
-    bottom: cy ? Math.min(clip.bottom, box.bottom) : clip.bottom,
-  };
-}
-
-/** 두 축 모두 좁히는 클립 교차(iframe 등). */
-function intersectClipBox(clip: Clip, box: Clip): Clip {
-  return {
-    left: Math.max(clip.left, box.left),
-    right: Math.min(clip.right, box.right),
-    top: Math.max(clip.top, box.top),
-    bottom: Math.min(clip.bottom, box.bottom),
-  };
-}
-
-/** box 가 클립 영역 밖(또는 0크기 클립 안)이라 보이지 않는지 판정. */
-function isOutsideClip(box: Clip, clip: Clip): boolean {
-  // 0(또는 음수) 크기 클립이면 그 안의 모든 것이 잘려 안 보인다(height:0; overflow:hidden 등).
-  if (clip.right <= clip.left || clip.bottom <= clip.top) return true;
-  return (
-    box.right <= clip.left ||
-    box.left >= clip.right ||
-    box.bottom <= clip.top ||
-    box.top >= clip.bottom
-  );
-}
-
-/** background-size/position 을 반영해 배경 이미지가 그려질 박스를 요소 박스 안에서 계산 */
-function bgImageLayout(styles: Record<string, string>, box: Layout): Layout {
-  const sizeRaw = (styles["background-size"] || "").trim();
-  const posRaw = (styles["background-position"] || "center").trim();
-
-  let w = box.width;
-  let h = box.height;
-  const sizeParts = sizeRaw.split(/\s+/);
-  const sw = parsePx(sizeParts[0]);
-  const sh = parsePx(sizeParts[1] ?? sizeParts[0]);
-  if (sw > 0 && sw <= box.width) w = sw;
-  if (sh > 0 && sh <= box.height) h = sh;
-
-  // position: center / left / right / top / bottom / px 근사 (기본 center)
-  const posParts = posRaw.split(/\s+/);
-  const px = alignPos(posParts[0], box.width, w);
-  const py = alignPos(posParts[1] ?? posParts[0] ?? "center", box.height, h, true);
-
-  return { x: box.x + px, y: box.y + py, width: w, height: h, order: box.order };
-}
-
-function alignPos(token: string | undefined, boxSize: number, itemSize: number, vertical = false): number {
-  const t = (token || "center").toLowerCase();
-  if (t === "center") return (boxSize - itemSize) / 2;
-  if (!vertical && t === "left") return 0;
-  if (!vertical && t === "right") return boxSize - itemSize;
-  if (vertical && t === "top") return 0;
-  if (vertical && t === "bottom") return boxSize - itemSize;
-  if (t.endsWith("%")) return ((boxSize - itemSize) * parseFloat(t)) / 100;
-  const n = parsePx(t);
-  if (!Number.isNaN(n) && /px$/.test(t)) return n;
-  return (boxSize - itemSize) / 2;
-}
-
-/**
- * 형제 노드를 스태킹(paint) 순서로 정렬한다. order 가 작을수록 먼저(아래) 그려진다.
- * z-index/absolute 로 DOM 순서와 스태킹이 다른 경우에도 올바르게 겹치도록 한다.
- * 안정 정렬이므로 order 가 같으면 DOM(삽입) 순서를 유지한다.
- */
-function sortByOrder(nodes: H2FNode[]): H2FNode[] {
-  return nodes
-    .map((n, i) => ({ n, i }))
-    .sort((a, b) => {
-      const oa = a.n.layout.order ?? 0;
-      const ob = b.n.layout.order ?? 0;
-      return oa === ob ? a.i - b.i : oa - ob;
-    })
-    .map((x) => x.n);
-}
-
-/** 루트 프레임에 캔버스를 완전히 가리는 불투명 배경이 있는지 */
-function hasOpaqueFill(node: H2FNode): boolean {
-  if (node.type !== "frame") return false;
-  const fills = (node as FrameNode).style.fills;
-  if (!fills || fills.length === 0) return false;
-  return fills.some((f) => (f.type === "solid" && f.color.a >= 1) || f.type === "image");
-}
-
-function unionBounds(nodes: H2FNode[]): Layout {
-  let minX = Infinity,
-    minY = Infinity,
-    maxX = -Infinity,
-    maxY = -Infinity;
-  for (const n of nodes) {
-    minX = Math.min(minX, n.layout.x);
-    minY = Math.min(minY, n.layout.y);
-    maxX = Math.max(maxX, n.layout.x + n.layout.width);
-    maxY = Math.max(maxY, n.layout.y + n.layout.height);
-  }
-  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
