@@ -418,10 +418,6 @@ assert(
   ov.svgUrlRequests.some((r) => r.url === "https://x/logo.svg"),
   "SVG <img> url 이 svgUrlRequests 에 등록됨"
 );
-assert(
-  !!ovRoot && ovRoot.layout.width >= 300,
-  "오버플로하는 자식을 덮도록 루트 폭이 확장됨(>=300)"
-);
 const rootFill = ovRoot?.style.fills?.[0];
 assert(
   !!rootFill && rootFill.type === "solid" && rootFill.color.a >= 1,

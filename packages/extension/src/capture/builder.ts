@@ -322,39 +322,15 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
 
   // 브라우저는 투명한 페이지 배경을 흰색 캔버스로 렌더한다.
   // 루트에 불투명 배경이 없으면 흰색을 깔아 Figma 다크 캔버스가 비치는 것을 막는다.
-  if (root && root.type === "frame") {
+  if (root && root.type === "frame" && !hasOpaqueFill(root)) {
     const f = root as FrameNode;
-    // 자식이 루트 경계를 넘어 오버플로하면(예: min-width 고정 레이아웃) 루트를 확장해
-    // 배경이 전 영역을 덮도록 한다. 확장하지 않으면 넘친 영역이 다크 캔버스로 비친다.
-    const ext = treeExtent(f, f.layout.x, f.layout.y);
-    f.layout = {
-      ...f.layout,
-      width: Math.max(f.layout.width, ext.right - f.layout.x),
-      height: Math.max(f.layout.height, ext.bottom - f.layout.y),
+    f.style = {
+      ...f.style,
+      fills: [{ type: "solid", color: { r: 1, g: 1, b: 1, a: 1 } }, ...(f.style.fills ?? [])],
     };
-    if (!hasOpaqueFill(f)) {
-      f.style = {
-        ...f.style,
-        fills: [{ type: "solid", color: { r: 1, g: 1, b: 1, a: 1 } }, ...(f.style.fills ?? [])],
-      };
-    }
   }
 
   return { root, imageUrls, svgRequests, svgUrlRequests };
-}
-
-/** 노드와 모든 자손이 차지하는 최대 우/하 좌표(절대)를 구한다. */
-function treeExtent(node: H2FNode, right: number, bottom: number): { right: number; bottom: number } {
-  right = Math.max(right, node.layout.x + node.layout.width);
-  bottom = Math.max(bottom, node.layout.y + node.layout.height);
-  if (node.type === "frame") {
-    for (const c of node.children) {
-      const e = treeExtent(c, right, bottom);
-      right = e.right;
-      bottom = e.bottom;
-    }
-  }
-  return { right, bottom };
 }
 
 /** url 이 SVG 인지(확장자 또는 data:image/svg+xml) */

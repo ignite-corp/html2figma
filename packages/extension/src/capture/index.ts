@@ -21,12 +21,14 @@ export interface CaptureOptions {
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** 문서 전체 높이(CSS px)와 device px 배율(DPR)을 측정. 실패 시 fallback. 폭주 방지 상한. */
+/** 문서 전체 크기(CSS px)와 device px 배율(DPR)을 측정. 실패 시 fallback. 폭주 방지 상한. */
 const MAX_PAGE_HEIGHT = 30000;
+const MAX_PAGE_WIDTH = 10000;
 async function measurePage(
   session: CdpSession,
+  fallbackWidth: number,
   fallbackHeight: number
-): Promise<{ cssHeight: number; scale: number }> {
+): Promise<{ cssWidth: number; cssHeight: number; scale: number }> {
   try {
     const m = await session.send<{
       cssContentSize?: { width: number; height: number };
@@ -34,6 +36,8 @@ async function measurePage(
     }>("Page.getLayoutMetrics");
     const cssH = m?.cssContentSize?.height ?? m?.contentSize?.height ?? fallbackHeight;
     const cssHeight = Math.min(Math.max(Math.ceil(cssH), fallbackHeight), MAX_PAGE_HEIGHT);
+    const cssW = m?.cssContentSize?.width ?? m?.contentSize?.width ?? fallbackWidth;
+    const cssWidth = Math.min(Math.max(Math.ceil(cssW), fallbackWidth), MAX_PAGE_WIDTH);
     // DOMSnapshot bounds 는 device px(레티나면 ×DPR)로 오는데 font-size 는 CSS px 이다.
     // 두 값을 일치시키기 위해 배율을 구해 좌표를 CSS px 로 정규화한다.
     let scale = 1;
@@ -43,9 +47,9 @@ async function measurePage(
       scale = devH / cssContentH;
     }
     if (!Number.isFinite(scale) || scale < 1) scale = 1;
-    return { cssHeight, scale };
+    return { cssWidth, cssHeight, scale };
   } catch {
-    return { cssHeight: fallbackHeight, scale: 1 };
+    return { cssWidth: fallbackWidth, cssHeight: fallbackHeight, scale: 1 };
   }
 }
 
@@ -234,7 +238,11 @@ export async function capturePage(
 
     // 전체 페이지(스크롤 영역 포함)를 캡처하기 위해 문서 실제 높이만큼 뷰포트를 확장.
     // 고정 뷰포트로만 스냅샷을 뜨면 접힌 영역(footer 등)이 잘린다.
-    const { cssHeight: fullHeight, scale } = await measurePage(session, vp.height);
+    const { cssWidth: fullWidth, cssHeight: fullHeight, scale } = await measurePage(
+      session,
+      vp.width,
+      vp.height
+    );
     if (fullHeight > vp.height) {
       await session.send("Emulation.setDeviceMetricsOverride", {
         width: vp.width,
@@ -261,6 +269,16 @@ export async function capturePage(
 
     const { root, imageUrls, svgRequests, svgUrlRequests } = buildIR(parsed);
     if (!root) throw new Error("변환할 노드가 없습니다.");
+
+    // 루트 프레임을 브라우저가 측정한 실제 페이지 크기로 맞춘다.
+    // (min-width 고정 레이아웃 등으로 자식이 body 폭을 넘어도 흰 배경이 전 영역을 덮게 함)
+    if (root.type === "frame") {
+      root.layout = {
+        ...root.layout,
+        width: Math.max(root.layout.width, fullWidth),
+        height: Math.max(root.layout.height, fullHeight),
+      };
+    }
 
     // DOMSnapshot 에 없는 ::before/::after 아이콘을 페이지에서 수집해 root 에 얹는다.
     onProgress?.("아이콘 수집", 0.55);
