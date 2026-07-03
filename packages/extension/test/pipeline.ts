@@ -424,5 +424,69 @@ assert(
   "루트에 불투명(흰색) 배경이 깔림"
 );
 
+/* ---------------- overflow:hidden + height:0 로 접힌 콘텐츠 클립 케이스 ---------------- */
+console.log("\n오버플로 클립(접힌 드롭다운):");
+function clipSnap(subMenuOverflow: string): CaptureSnapshotResult {
+  const s: string[] = [""];
+  const it = (v: string) => {
+    const i = s.indexOf(v);
+    if (i >= 0) return i;
+    s.push(v);
+    return s.length - 1;
+  };
+  const row = (m: Record<string, string>) => COMPUTED_STYLES.map((n) => it(m[n] ?? ""));
+  return {
+    strings: s,
+    documents: [
+      {
+        documentURL: it("https://example.com"),
+        title: it("clip"),
+        nodes: {
+          parentIndex: [-1, 0, 1],
+          nodeType: [1, 1, 1],
+          nodeName: [it("DIV"), it("DIV"), it("DIV")],
+          nodeValue: [it(""), it(""), it("")],
+          backendNodeId: [1, 2, 3],
+          attributes: [[], [], []],
+        },
+        layout: {
+          nodeIndex: [0, 1, 2],
+          styles: [
+            row({ display: "block", "background-color": "rgb(255, 255, 255)" }),
+            row({ display: "block", overflow: subMenuOverflow }),
+            row({ display: "block", "background-color": "rgb(18, 20, 22)" }),
+          ],
+          // 루트 300x200, sub-menu 300x0(접힘), inner 300x150(내용)
+          bounds: [
+            [0, 0, 300, 200],
+            [0, 0, 300, 0],
+            [0, 0, 300, 150],
+          ],
+          text: [it(""), it(""), it("")],
+        },
+      },
+    ],
+  } as unknown as CaptureSnapshotResult;
+}
+
+const countNodes = (n: import("@html2figma/shared").H2FNode | null): number => {
+  if (!n) return 0;
+  let c = 1;
+  const kids = (n as { children?: import("@html2figma/shared").H2FNode[] }).children;
+  if (Array.isArray(kids)) for (const ch of kids) c += countNodes(ch);
+  return c;
+};
+
+const clipped = buildIR(parseAllDocuments(clipSnap("hidden")));
+assert(
+  countNodes(clipped.root) === 1,
+  "height:0; overflow:hidden 의 자식(내용)이 클립되어 제거됨(루트 프레임만 남음)"
+);
+const notClipped = buildIR(parseAllDocuments(clipSnap("visible")));
+assert(
+  countNodes(notClipped.root) >= 2,
+  "overflow:visible 면 접힌 컨테이너의 내용이 유지됨(회귀 방지)"
+);
+
 console.log(failures === 0 ? "\n✅ 모든 테스트 통과" : `\n❌ ${failures}개 실패`);
 process.exit(failures === 0 ? 0 : 1);

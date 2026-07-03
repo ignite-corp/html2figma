@@ -220,18 +220,29 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
     return vectors;
   }
 
-  function build(node: RawNode, ox: number, oy: number): H2FNode[] {
+  function build(node: RawNode, ox: number, oy: number, clip: Clip): H2FNode[] {
     if (node.nodeType === 3) return [];
-    if (node.nodeType !== 1) return node.children.flatMap((c) => build(c, ox, oy));
+    if (node.nodeType !== 1) return node.children.flatMap((c) => build(c, ox, oy, clip));
     if (SKIP_TAGS.has(node.nodeName)) return [];
+
+    const rl = node.layout;
+    // 오버플로 클리핑: 조상이 overflow hidden/clip/scroll/auto 로 잘라내는 영역 밖이면 서브트리 제거.
+    // (예: height:0; overflow:hidden 로 접힌 드롭다운/아코디언은 브라우저에서 안 보인다)
+    if (rl && isOutsideClip(edgesOf(rl, ox, oy), clip)) return [];
+
+    // 이 요소가 오버플로를 자르면 자손 클립 영역을 자신의 박스로 좁힌다.
+    let childClip = clip;
+    if (rl && clipsOverflow(rl.styles)) {
+      childClip = intersectClip(clip, edgesOf(rl, ox, oy), rl.styles);
+    }
 
     if (!isRendered(node)) {
       if (node.layout) return [];
-      return node.children.flatMap((c) => build(c, ox, oy));
+      return node.children.flatMap((c) => build(c, ox, oy, childClip));
     }
 
     const layout = layoutOf(node, ox, oy);
-    if (!layout) return node.children.flatMap((c) => build(c, ox, oy));
+    if (!layout) return node.children.flatMap((c) => build(c, ox, oy, childClip));
 
     if (node.nodeName === "IMG") {
       const img = buildImage(node, ox, oy);
@@ -264,14 +275,16 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
     if (it) children.push(it);
 
     for (const c of node.children) {
-      if (c.nodeType === 1) children.push(...build(c, ox, oy));
+      if (c.nodeType === 1) children.push(...build(c, ox, oy, childClip));
     }
 
     // iframe 내용 문서 병합 (자식 좌표를 iframe 절대 위치만큼 오프셋)
     if (node.nodeName === "IFRAME" && node.contentDocumentIndex != null) {
       const inner = docs[node.contentDocumentIndex];
       if (inner?.root) {
-        for (const m of buildDocRoot(inner, layout.x, layout.y)) children.push(m);
+        // iframe 은 자기 박스로 내용을 자른다.
+        const iframeClip = intersectClipBox(childClip, edgesOf(node.layout!, ox, oy));
+        for (const m of buildDocRoot(inner, layout.x, layout.y, iframeClip)) children.push(m);
       }
     }
 
@@ -297,12 +310,12 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
   }
 
   /** 문서 root의 렌더 가능한 최상위 노드들을 offset 적용해 빌드 */
-  function buildDocRoot(doc: ParsedDocument, ox: number, oy: number): H2FNode[] {
+  function buildDocRoot(doc: ParsedDocument, ox: number, oy: number, clip: Clip): H2FNode[] {
     if (!doc.root) return [];
-    return build(doc.root, ox, oy);
+    return build(doc.root, ox, oy, clip);
   }
 
-  const built = buildDocRoot(docs[0], 0, 0);
+  const built = buildDocRoot(docs[0], 0, 0, NO_CLIP);
 
   let root: H2FNode | null;
   if (built.length === 1) {
@@ -336,6 +349,62 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
 /** url 이 SVG 인지(확장자 또는 data:image/svg+xml) */
 function isSvgUrl(url: string): boolean {
   return /^data:image\/svg\+xml/i.test(url) || /\.svg(\?|#|$)/i.test(url);
+}
+
+/* ---------------- 오버플로 클리핑(브라우저 overflow:hidden 재현) ---------------- */
+
+/** 절대 좌표계의 클립 사각형(경계). 무한대는 해당 축이 잘리지 않음을 뜻한다. */
+type Clip = { left: number; top: number; right: number; bottom: number };
+const NO_CLIP: Clip = { left: -Infinity, top: -Infinity, right: Infinity, bottom: Infinity };
+
+function isClipVal(v: string | undefined): boolean {
+  if (!v) return false;
+  return v.includes("hidden") || v.includes("clip") || v.includes("scroll") || v.includes("auto");
+}
+
+function clipsOverflow(styles: Record<string, string>): boolean {
+  const ox = styles["overflow-x"] ?? styles["overflow"];
+  const oy = styles["overflow-y"] ?? styles["overflow"];
+  return isClipVal(ox) || isClipVal(oy);
+}
+
+function edgesOf(rl: NonNullable<RawNode["layout"]>, ox: number, oy: number): Clip {
+  const [x, y, w, h] = rl.bounds;
+  return { left: x + ox, top: y + oy, right: x + ox + w, bottom: y + oy + h };
+}
+
+/** overflow 가 잘리는 축만 클립 경계를 요소 박스로 좁힌다. */
+function intersectClip(clip: Clip, box: Clip, styles: Record<string, string>): Clip {
+  const cx = isClipVal(styles["overflow-x"] ?? styles["overflow"]);
+  const cy = isClipVal(styles["overflow-y"] ?? styles["overflow"]);
+  return {
+    left: cx ? Math.max(clip.left, box.left) : clip.left,
+    right: cx ? Math.min(clip.right, box.right) : clip.right,
+    top: cy ? Math.max(clip.top, box.top) : clip.top,
+    bottom: cy ? Math.min(clip.bottom, box.bottom) : clip.bottom,
+  };
+}
+
+/** 두 축 모두 좁히는 클립 교차(iframe 등). */
+function intersectClipBox(clip: Clip, box: Clip): Clip {
+  return {
+    left: Math.max(clip.left, box.left),
+    right: Math.min(clip.right, box.right),
+    top: Math.max(clip.top, box.top),
+    bottom: Math.min(clip.bottom, box.bottom),
+  };
+}
+
+/** box 가 클립 영역 밖(또는 0크기 클립 안)이라 보이지 않는지 판정. */
+function isOutsideClip(box: Clip, clip: Clip): boolean {
+  // 0(또는 음수) 크기 클립이면 그 안의 모든 것이 잘려 안 보인다(height:0; overflow:hidden 등).
+  if (clip.right <= clip.left || clip.bottom <= clip.top) return true;
+  return (
+    box.right <= clip.left ||
+    box.left >= clip.right ||
+    box.bottom <= clip.top ||
+    box.top >= clip.bottom
+  );
 }
 
 /** background-size/position 을 반영해 배경 이미지가 그려질 박스를 요소 박스 안에서 계산 */
