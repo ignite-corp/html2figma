@@ -39,9 +39,7 @@ pnpm --filter @html2figma/bridge test      # 릴레이 룸/페어링/격리 단�
 1. `pnpm run build:extension`
 2. Chrome → `chrome://extensions` → 개발자 모드 ON
 3. **압축해제된 확장 프로그램을 로드** → `packages/extension/dist` 선택
-4. 캡처할 페이지에서 툴바 아이콘 클릭
-   - **단일** 탭: 현재 페이지 캡처 (뷰포트/테마 선택)
-   - **벌크** 탭: 여러 URL 을 줄바꿈으로 입력 → 백그라운드 탭에서 순차 캡처 → 번들 export
+4. 캡처할 페이지에서 툴바 아이콘 클릭 → 현재 페이지 캡처
 5. `.h2f` 다운로드 / 클립보드 복사 / **Figma 로 전송**(브릿지 실행 시)
 
 > 캡처 중에는 Chrome 이 "이 확장 프로그램이 디버깅하고 있습니다" 배너를 표시한다(CDP 사용).
@@ -52,27 +50,20 @@ pnpm --filter @html2figma/bridge test      # 릴레이 룸/페어링/격리 단�
 2. Figma 데스크톱 → Plugins → Development → **Import plugin from manifest…**
 3. `packages/figma-plugin/manifest.json` 선택 (루트·`dist/` 어느 쪽을 골라도 동작)
 4. 플러그인 실행 → `.h2f` 파일 드롭(또는 클립보드 JSON 붙여넣기) → **임포트**
-   - 번들(`.h2f` bundle) 파일도 자동 감지해 여러 페이지를 나란히 렌더
 
 ## Figma로 direct send (페어링 릴레이)
 
 파일/클립보드 없이 익스텐션 → 플러그인으로 곧바로 보낸다. **룸+페어링 코드**로 격리되어
 여러 사용자가 같은 릴레이를 써도 캡처가 섞이지 않는다.
 
-### 로컬(자체 호스팅/개발)
-1. `pnpm --filter @html2figma/bridge build` (최초 1회)
-2. 릴레이 실행: `pnpm --filter @html2figma/bridge start` → `ws://localhost:8787`
-3. Figma 플러그인 UI 에서 **연결 (코드 받기)** → 표시된 **6자리 코드** 확인
-4. 익스텐션 팝업에서 **캡처 후 Figma로 바로 전송** 체크 → 코드 입력 → 캡처
-5. 플러그인이 자동 렌더
+1. Figma 플러그인 UI 에서 **연결 (코드 받기)** → 표시된 **6자리 코드** 확인
+2. 익스텐션 팝업에서 **캡처 후 Figma로 바로 전송** 체크 → 코드 입력 → 캡처
+3. 플러그인이 자동 렌더
 
-### 공개(불특정 다수) — 호스팅 릴레이
-- 페어링 릴레이를 인터넷에 올리면 로컬 서버 없이도 누구나 사용 가능.
-- **일반 Node 호스팅**(Render/Fly/Railway/Koyeb): `packages/bridge`가 `PORT`/`/health`를 지원. Cloudflare가 막힌 환경 권장.
-- **Cloudflare Workers**: `packages/relay-cf`(서버리스, `wss://…workers.dev`).
-- 배포·설정 절차는 [docs/PUBLISHING.md](docs/PUBLISHING.md) 참고. 플러그인/익스텐션의
-  **릴레이 서버 설정**에 배포된 `wss://…` 주소를 입력하면 된다.
+- 익스텐션·플러그인 모두 공개 릴레이(`wss://html2figma-relay.onrender.com`)를 고정으로 사용한다.
 - 릴레이는 무저장(ephemeral) · 룸 격리 · payload 크기 제한 · TTL · rate limit 을 적용한다.
+- 자체 호스팅(Node `packages/bridge` / Cloudflare `packages/relay-cf`) 절차는
+  [docs/PUBLISHING.md](docs/PUBLISHING.md) 참고.
 
 > direct-send를 쓰지 않으면 릴레이가 전혀 필요 없다. 파일/클립보드만으로 모든 기능을 쓸 수 있다.
 
@@ -87,8 +78,7 @@ pnpm --filter @html2figma/bridge test      # 릴레이 룸/페어링/격리 단�
 - 레이아웃(절대좌표), 텍스트, 이미지, 배경색/그라디언트/이미지 배경
 - 보더(비대칭 두께 포함), border-radius, box-shadow, opacity, overflow clip
 - **iframe / shadow DOM** 병합 캡처, **인라인 SVG → 벡터** 렌더
-- **벌크 임포트**(다중 URL → 번들), **direct send**(페어링 릴레이)
-- 다중 뷰포트(desktop/tablet/mobile), 다중 테마(light/dark)
+- **direct send**(페어링 릴레이), 대용량 페이지 청크 분할 전송
 - 플러그인 옵션: **Auto Layout 사용**, **Local styles 생성** (기본 on)
 
 ## 알려진 한계 / 이후 과제

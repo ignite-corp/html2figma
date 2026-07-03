@@ -12,15 +12,8 @@
       body { width: 340px; margin: 0; padding: 16px; font-size: 13px; }
       h1 { font-size: 15px; margin: 0 0 12px; }
       label { display: block; margin: 10px 0 4px; font-weight: 600; color: #555; }
-      select, textarea { width: 100%; box-sizing: border-box; padding: 6px; border-radius: 6px; border: 1px solid #ccc; }
-      textarea { height: 70px; resize: vertical; font-family: ui-monospace, monospace; font-size: 12px; }
       input[type="text"] { width: 100%; box-sizing: border-box; padding: 6px; border-radius: 6px; border: 1px solid #ccc; }
       #code { text-transform: uppercase; letter-spacing: 2px; font-family: ui-monospace, monospace; font-size: 14px; text-align: center; }
-      .row { display: flex; gap: 8px; }
-      .row > div { flex: 1; }
-      .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
-      .tabs button { flex: 1; padding: 7px; border: 1px solid #ccc; background: #f7f7f7; color: #333; border-radius: 6px; cursor: pointer; font-weight: 600; }
-      .tabs button.active { background: #4c5bff; color: #fff; border-color: #4c5bff; }
       button.primary { width: 100%; margin-top: 14px; padding: 9px; border: 0; border-radius: 8px; background: #4c5bff; color: #fff; font-weight: 600; cursor: pointer; }
       button:disabled { opacity: 0.5; cursor: default; }
       label.opt { display: flex; align-items: center; gap: 6px; font-weight: 500; color: #444; margin-top: 10px; }
@@ -36,44 +29,10 @@
   <body>
     <h1>html2figma</h1>
 
-    <div class="tabs">
-      <button id="tab-single" class="active">현재 페이지</button>
-      <button id="tab-bulk">벌크(여러 URL)</button>
-    </div>
-
-    <div class="row">
-      <div>
-        <label for="viewport">뷰포트</label>
-        <select id="viewport">
-          <option value="desktop">Desktop</option>
-          <option value="tablet">Tablet</option>
-          <option value="mobile">Mobile</option>
-        </select>
-      </div>
-      <div>
-        <label for="theme">테마</label>
-        <select id="theme">
-          <option value="default">Default</option>
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-        </select>
-      </div>
-    </div>
-
-    <div id="bulk-panel" class="hidden">
-      <label for="urls">URL 목록 (줄바꿈으로 구분)</label>
-      <textarea id="urls" placeholder="https://example.com&#10;https://example.com/about"></textarea>
-    </div>
-
     <label class="opt"><input type="checkbox" id="bridge" /> 캡처 후 Figma로 바로 전송</label>
     <div id="bridge-fields" class="hidden">
       <label for="code">Figma 페어링 코드</label>
       <input id="code" type="text" maxlength="7" placeholder="플러그인에 표시된 6자리 코드" autocomplete="off" />
-      <details>
-        <summary style="cursor:pointer;color:#888;margin-top:6px;">릴레이 서버 설정</summary>
-        <input id="relay-url" type="text" placeholder="ws://localhost:8787" autocomplete="off" style="margin-top:6px;" />
-        <div style="color:#999;font-size:11px;margin-top:4px;">공개 릴레이 사용 시 wss:// 주소를 입력하세요. 비우면 로컬 기본값.</div>
-      </details>
     </div>
 
     <button id="capture" class="primary">캡처</button>

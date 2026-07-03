@@ -5,17 +5,12 @@ import {
   RELAY_MAX_TOTAL_BYTES,
 } from "@html2figma/shared";
 
-/** 기본 릴레이 주소. 공개 배포 시 chrome.storage 의 relayUrl 로 덮어쓴다. */
+/** 공개 릴레이 주소. */
 export const DEFAULT_RELAY_URL = "wss://html2figma-relay.onrender.com";
 
-/** 저장된 릴레이 URL(없으면 기본값). */
+/** 릴레이 URL. */
 export async function getRelayUrl(): Promise<string> {
-  try {
-    const { relayUrl } = await chrome.storage.local.get("relayUrl");
-    return (typeof relayUrl === "string" && relayUrl.trim()) || DEFAULT_RELAY_URL;
-  } catch {
-    return DEFAULT_RELAY_URL;
-  }
+  return DEFAULT_RELAY_URL;
 }
 
 export interface RelayResult {

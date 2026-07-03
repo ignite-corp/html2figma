@@ -14,17 +14,10 @@ const bridgeStatus = $<HTMLSpanElement>("bridge-status");
 const bridgeDot = $<HTMLSpanElement>("bridge-dot");
 const codeBox = $<HTMLDivElement>("code-box");
 const codeEl = $<HTMLDivElement>("code");
-const relayUrlEl = $<HTMLInputElement>("relay-url");
 
 const DEFAULT_RELAY_URL = "wss://html2figma-relay.onrender.com";
 let file: H2FFile | null = null;
 let ws: WebSocket | null = null;
-
-// 저장된 릴레이 URL 로드.
-parent.postMessage({ pluginMessage: { type: "get-config" } }, "*");
-relayUrlEl.addEventListener("input", () => {
-  parent.postMessage({ pluginMessage: { type: "save-config", relayUrl: relayUrlEl.value.trim() } }, "*");
-});
 
 function setStatus(t: string) {
   statusEl.textContent = t;
@@ -44,13 +37,11 @@ function doImport(f: H2FFile) {
 function loadFromText(text: string) {
   try {
     const parsed = JSON.parse(text) as H2FFile;
-    const ok = "version" in parsed && ("root" in parsed || "documents" in parsed);
+    const ok = "version" in parsed && "root" in parsed;
     if (!ok) throw new Error("올바른 .h2f 형식이 아닙니다.");
     file = parsed;
     importBtn.disabled = false;
-    const label =
-      "documents" in parsed ? `번들 (${parsed.documents.length}페이지)` : parsed.meta?.title || "무제";
-    setStatus(`문서 로드됨 — ${label}`);
+    setStatus(`문서 로드됨 — ${parsed.meta?.title || "무제"}`);
   } catch (e) {
     file = null;
     importBtn.disabled = true;
@@ -109,7 +100,7 @@ bridgeConnectBtn.addEventListener("click", () => {
     disconnect();
     return;
   }
-  const url = relayUrlEl.value.trim() || DEFAULT_RELAY_URL;
+  const url = DEFAULT_RELAY_URL;
   setBridgeState(false, "연결 중…");
   try {
     ws = new WebSocket(url);
@@ -189,7 +180,5 @@ window.onmessage = (event: MessageEvent) => {
   if (msg?.type === "status") {
     setStatus(msg.text);
     if (msg.text === "완료!") importBtn.disabled = false;
-  } else if (msg?.type === "config") {
-    if (typeof msg.relayUrl === "string") relayUrlEl.value = msg.relayUrl;
   }
 };

@@ -1,19 +1,12 @@
-import type { H2FDocument, H2FFile, Theme, ViewportPreset } from "@html2figma/shared";
-import { isBundle, normalizeCode } from "@html2figma/shared";
-import type { BackgroundToPopup, BulkRequest, CaptureRequest } from "../messages.js";
+import type { H2FDocument, H2FFile } from "@html2figma/shared";
+import { normalizeCode } from "@html2figma/shared";
+import type { BackgroundToPopup, CaptureRequest } from "../messages.js";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
-const tabSingle = $<HTMLButtonElement>("tab-single");
-const tabBulk = $<HTMLButtonElement>("tab-bulk");
-const bulkPanel = $<HTMLDivElement>("bulk-panel");
-const urlsEl = $<HTMLTextAreaElement>("urls");
-const viewportSel = $<HTMLSelectElement>("viewport");
-const themeSel = $<HTMLSelectElement>("theme");
 const bridgeChk = $<HTMLInputElement>("bridge");
 const bridgeFields = $<HTMLDivElement>("bridge-fields");
 const codeEl = $<HTMLInputElement>("code");
-const relayUrlEl = $<HTMLInputElement>("relay-url");
 const captureBtn = $<HTMLButtonElement>("capture");
 const statusEl = $<HTMLDivElement>("status");
 const progressEl = $<HTMLSpanElement>("progress");
@@ -21,13 +14,11 @@ const exportsEl = $<HTMLDivElement>("exports");
 const downloadBtn = $<HTMLButtonElement>("download");
 const copyBtn = $<HTMLButtonElement>("copy");
 
-let mode: "single" | "bulk" = "single";
 let captured: H2FFile | null = null;
 
-// 저장된 페어링 코드/릴레이 URL 복원.
-chrome.storage.local.get(["bridgeCode", "relayUrl", "sendToBridge"]).then((s) => {
+// 저장된 페어링 코드/전송 설정 복원.
+chrome.storage.local.get(["bridgeCode", "sendToBridge"]).then((s) => {
   if (typeof s.bridgeCode === "string") codeEl.value = s.bridgeCode;
-  if (typeof s.relayUrl === "string") relayUrlEl.value = s.relayUrl;
   if (s.sendToBridge) {
     bridgeChk.checked = true;
     bridgeFields.classList.remove("hidden");
@@ -42,18 +33,6 @@ codeEl.addEventListener("input", () => {
   codeEl.value = normalizeCode(codeEl.value).slice(0, 6);
   chrome.storage.local.set({ bridgeCode: codeEl.value });
 });
-relayUrlEl.addEventListener("input", () => {
-  chrome.storage.local.set({ relayUrl: relayUrlEl.value.trim() });
-});
-
-function setMode(m: "single" | "bulk") {
-  mode = m;
-  tabSingle.classList.toggle("active", m === "single");
-  tabBulk.classList.toggle("active", m === "bulk");
-  bulkPanel.classList.toggle("hidden", m !== "bulk");
-}
-tabSingle.addEventListener("click", () => setMode("single"));
-tabBulk.addEventListener("click", () => setMode("bulk"));
 
 function setStatus(text: string, ratio?: number) {
   statusEl.textContent = text;
@@ -71,7 +50,6 @@ captureBtn.addEventListener("click", async () => {
 
   const sendToBridge = bridgeChk.checked;
   const bridgeCode = normalizeCode(codeEl.value);
-  const relayUrl = relayUrlEl.value.trim() || undefined;
   if (sendToBridge && bridgeCode.length !== 6) {
     setStatus("Figma 페어링 코드 6자리를 입력하세요.");
     return;
@@ -81,47 +59,20 @@ captureBtn.addEventListener("click", async () => {
   setStatus("시작…", 0);
 
   const port = chrome.runtime.connect({ name: "capture" });
-  const viewport = viewportSel.value as ViewportPreset;
-  const theme = themeSel.value as Theme;
 
-  if (mode === "single") {
-    const tab = await getActiveTab();
-    if (!tab?.id) {
-      setStatus("활성 탭을 찾을 수 없습니다.");
-      captureBtn.disabled = false;
-      return;
-    }
-    const req: CaptureRequest = {
-      kind: "capture",
-      tabId: tab.id,
-      viewport,
-      theme,
-      sendToBridge,
-      bridgeCode,
-      relayUrl,
-    };
-    port.postMessage(req);
-  } else {
-    const urls = urlsEl.value
-      .split(/\r?\n/)
-      .map((u) => u.trim())
-      .filter(Boolean);
-    if (!urls.length) {
-      setStatus("URL을 한 개 이상 입력하세요.");
-      captureBtn.disabled = false;
-      return;
-    }
-    const req: BulkRequest = {
-      kind: "bulk",
-      urls,
-      viewport,
-      theme,
-      sendToBridge,
-      bridgeCode,
-      relayUrl,
-    };
-    port.postMessage(req);
+  const tab = await getActiveTab();
+  if (!tab?.id) {
+    setStatus("활성 탭을 찾을 수 없습니다.");
+    captureBtn.disabled = false;
+    return;
   }
+  const req: CaptureRequest = {
+    kind: "capture",
+    tabId: tab.id,
+    sendToBridge,
+    bridgeCode,
+  };
+  port.postMessage(req);
 
   port.onMessage.addListener((msg: BackgroundToPopup) => {
     if (msg.kind === "progress") {
@@ -134,16 +85,6 @@ captureBtn.addEventListener("click", async () => {
         1
       );
       exportsEl.style.display = "block";
-      captureBtn.disabled = false;
-      port.disconnect();
-    } else if (msg.kind === "bulk-done") {
-      captured = msg.bundle;
-      const errNote = msg.errors.length ? ` (실패 ${msg.errors.length})` : "";
-      setStatus(
-        `완료 — 페이지 ${msg.bundle.documents.length}${errNote}${msg.bridgeSent ? " · Figma 전송됨" : ""}`,
-        1
-      );
-      exportsEl.style.display = msg.bundle.documents.length ? "block" : "none";
       captureBtn.disabled = false;
       port.disconnect();
     } else if (msg.kind === "error") {
@@ -176,7 +117,6 @@ copyBtn.addEventListener("click", async () => {
 });
 
 function fileName(file: H2FFile): string {
-  if (isBundle(file)) return file.documents[0]?.meta.title || "bundle";
   return (file as H2FDocument).meta.title || "capture";
 }
 

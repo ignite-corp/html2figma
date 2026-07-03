@@ -1,5 +1,4 @@
 import type { H2FFile } from "@html2figma/shared";
-import { isBundle } from "@html2figma/shared";
 import { Renderer, type RenderOptions } from "./render.js";
 
 interface ImportMessage {
@@ -8,11 +7,7 @@ interface ImportMessage {
   options: RenderOptions;
 }
 
-type UiMessage =
-  | ImportMessage
-  | { type: "cancel" }
-  | { type: "get-config" }
-  | { type: "save-config"; relayUrl: string };
+type UiMessage = ImportMessage | { type: "cancel" };
 
 figma.showUI(__html__, { width: 340, height: 520, title: "html2figma" });
 
@@ -21,26 +16,12 @@ figma.ui.onmessage = async (msg: UiMessage) => {
     figma.closePlugin();
     return;
   }
-  if (msg.type === "get-config") {
-    const relayUrl = (await figma.clientStorage.getAsync("relayUrl")) as string | undefined;
-    figma.ui.postMessage({ type: "config", relayUrl: relayUrl ?? "" });
-    return;
-  }
-  if (msg.type === "save-config") {
-    await figma.clientStorage.setAsync("relayUrl", msg.relayUrl);
-    return;
-  }
   if (msg.type !== "import") return;
 
   try {
     figma.ui.postMessage({ type: "status", text: "렌더링 중…" });
     const renderer = new Renderer({}, msg.options);
-    let nodes: SceneNode[];
-    if (isBundle(msg.file)) {
-      nodes = await renderer.renderBundle(msg.file);
-    } else {
-      nodes = [await renderer.render(msg.file)];
-    }
+    const nodes: SceneNode[] = [await renderer.render(msg.file)];
     if (nodes.length) {
       figma.currentPage.selection = nodes;
       figma.viewport.scrollAndZoomIntoView(nodes);

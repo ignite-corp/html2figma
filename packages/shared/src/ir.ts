@@ -16,19 +16,8 @@ export interface H2FDocument {
   assets: AssetMap;
 }
 
-/** 여러 페이지를 하나로 묶은 번들 (벌크 임포트) */
-export interface H2FBundle {
-  version: string;
-  kind: "bundle";
-  documents: H2FDocument[];
-}
-
-/** .h2f 파일에 담길 수 있는 최상위 형태 */
-export type H2FFile = H2FDocument | H2FBundle;
-
-export function isBundle(file: H2FFile): file is H2FBundle {
-  return (file as H2FBundle).kind === "bundle";
-}
+/** .h2f 파일에 담길 수 있는 최상위 형태 (단일 문서) */
+export type H2FFile = H2FDocument;
 
 export interface CaptureMeta {
   url: string;
@@ -36,7 +25,6 @@ export interface CaptureMeta {
   /** ISO 8601 */
   capturedAt: string;
   viewport: Viewport;
-  theme: Theme;
 }
 
 export interface Viewport {
@@ -46,8 +34,6 @@ export interface Viewport {
   /** 사전 정의 프리셋 이름 (예: 'desktop', 'tablet', 'mobile') */
   preset?: string;
 }
-
-export type Theme = "light" | "dark" | "default";
 
 /* ------------------------------------------------------------------ */
 /* 노드                                                                */

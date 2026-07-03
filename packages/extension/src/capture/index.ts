@@ -1,10 +1,7 @@
 import {
   H2F_VERSION,
-  getViewport,
   type AssetMap,
   type H2FDocument,
-  type Theme,
-  type ViewportPreset,
 } from "@html2figma/shared";
 import { CdpSession } from "./cdp.js";
 import { COMPUTED_STYLES } from "./styleProps.js";
@@ -20,8 +17,6 @@ import {
 } from "./pseudo.js";
 
 export interface CaptureOptions {
-  viewport: ViewportPreset;
-  theme: Theme;
   onProgress?: (step: string, ratio: number) => void;
 }
 
@@ -32,9 +27,9 @@ const MAX_PAGE_HEIGHT = 30000;
 const MAX_PAGE_WIDTH = 10000;
 /**
  * 탭의 실제 CSS 뷰포트 크기를 읽는다.
- * desktop 캡처를 고정 폭(1440)이 아니라 사용자가 실제로 보고 있는 창 폭에
- * 맞추기 위한 값으로, 반응형 그리드의 컬럼 수(예: 1440=3열 vs 1600↑=4열)가
- * 사용자 화면과 달라지는 문제를 막는다.
+ * 캡처를 고정 폭이 아니라 사용자가 실제로 보고 있는 창 폭에 맞춰,
+ * 반응형 그리드의 컬럼 수(예: 1440=3열 vs 1600↑=4열)가 사용자 화면과
+ * 달라지는 문제를 막는다.
  */
 async function readRealViewport(
   session: CdpSession
@@ -157,8 +152,9 @@ export async function capturePage(
   tabId: number,
   opts: CaptureOptions
 ): Promise<H2FDocument> {
-  const { viewport: preset, theme, onProgress } = opts;
-  const vp = getViewport(preset);
+  const { onProgress } = opts;
+  // 항상 사용자가 실제로 보고 있는 창 크기로 캡처한다(desktop 기준, DPR 1).
+  const vp = { width: 1440, height: 900, deviceScaleFactor: 1 };
   const session = new CdpSession(tabId);
 
   onProgress?.("연결 중", 0.05);
@@ -171,28 +167,17 @@ export async function capturePage(
     await session.send("DOMSnapshot.enable");
 
     onProgress?.("뷰포트 설정", 0.15);
-    // desktop 프리셋은 고정 폭(1440) 대신 사용자가 실제로 보고 있는 창 폭을 사용해
-    // 반응형 레이아웃(그리드 컬럼 수 등)이 사용자 화면과 동일하게 캡처되도록 한다.
-    // tablet/mobile 은 의도된 기기 에뮬레이션이므로 프리셋 폭을 유지한다.
-    if (preset === "desktop") {
-      const real = await readRealViewport(session);
-      if (real && real.width >= 1024) {
-        vp.width = real.width;
-        vp.height = Math.max(real.height, vp.height);
-      }
+    const real = await readRealViewport(session);
+    if (real && real.width >= 320) {
+      vp.width = real.width;
+      vp.height = Math.max(real.height, vp.height);
     }
     await session.send("Emulation.setDeviceMetricsOverride", {
       width: vp.width,
       height: vp.height,
       deviceScaleFactor: vp.deviceScaleFactor,
-      mobile: preset === "mobile",
+      mobile: false,
     });
-
-    if (theme !== "default") {
-      await session.send("Emulation.setEmulatedMedia", {
-        features: [{ name: "prefers-color-scheme", value: theme }],
-      });
-    }
 
     await delay(400);
 
@@ -208,7 +193,7 @@ export async function capturePage(
         width: vp.width,
         height: fullHeight,
         deviceScaleFactor: vp.deviceScaleFactor,
-        mobile: preset === "mobile",
+        mobile: false,
       });
       await delay(300);
     }
@@ -282,7 +267,6 @@ export async function capturePage(
         title: parsed.title,
         capturedAt: new Date().toISOString(),
         viewport: vp,
-        theme,
       },
       root,
       assets,

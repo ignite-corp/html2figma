@@ -2,7 +2,6 @@ import type {
   AssetMap,
   FrameNode as IRFrame,
   GradientPaint,
-  H2FBundle,
   H2FDocument,
   H2FNode,
   ImageNode as IRImage,
@@ -51,21 +50,6 @@ export class Renderer {
     node.name = doc.meta.title || "html2figma";
     figma.currentPage.appendChild(node);
     return node;
-  }
-
-  /** 번들: 각 문서를 가로로 나란히 배치 */
-  async renderBundle(bundle: H2FBundle): Promise<SceneNode[]> {
-    const nodes: SceneNode[] = [];
-    const GAP = 80;
-    let cursorX = 0;
-    for (const doc of bundle.documents) {
-      const node = await this.render(doc);
-      node.x = cursorX;
-      node.y = 0;
-      cursorX += ("width" in node ? node.width : doc.root.layout.width) + GAP;
-      nodes.push(node);
-    }
-    return nodes;
   }
 
   /* ---------------- 폰트 사전 로드 ---------------- */
