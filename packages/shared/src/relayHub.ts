@@ -6,6 +6,7 @@
  */
 import {
   RELAY_MAX_PAYLOAD_BYTES,
+  RELAY_MAX_TOTAL_BYTES,
   RELAY_ROOM_TTL_MS,
   isValidCode,
   makeRoomCode,
@@ -28,8 +29,10 @@ interface Room {
 interface ConnInfo {
   role: "figma" | "ext";
   code: string;
-  /** rate limit 용 최근 h2f 타임스탬프 목록. */
+  /** rate limit 용 최근 전송 시작 타임스탬프 목록. */
   hits: number[];
+  /** 진행 중인 청크 전송의 누적 바이트(전송 id → bytes). 전체 상한 검사용. */
+  chunkBytes?: Map<string, number>;
 }
 
 const RATE_WINDOW_MS = 10_000;
@@ -63,6 +66,8 @@ export class RelayHub {
         return this.join(conn, msg.code);
       case "h2f":
         return this.relay(conn, msg, sizeBytes ?? raw.length);
+      case "h2f-chunk":
+        return this.relayChunk(conn, msg, sizeBytes ?? raw.length);
       default:
         conn.send({ type: "error", reason: "bad-message", message: "알 수 없는 메시지" });
     }
@@ -140,6 +145,55 @@ export class RelayHub {
       delivered++;
     }
     conn.send({ type: "ack", delivered });
+  }
+
+  /**
+   * 큰 페이로드를 여러 청크로 나눠 중계한다. 각 청크는 개별 프레임 상한 이하이며,
+   * 같은 룸의 Figma 피어에게 순서대로 전달된다. 전송당 rate limit 은 첫 청크(seq=0)에서만
+   * 카운트하고, 누적 바이트가 전체 상한을 넘으면 거부한다. 마지막 청크에서 ack 를 보낸다.
+   */
+  private relayChunk(
+    conn: RelayConn,
+    msg: Extract<RelayClientMsg, { type: "h2f-chunk" }>,
+    sizeBytes: number
+  ): void {
+    const info = this.info.get(conn);
+    if (!info || info.role !== "ext") {
+      conn.send({ type: "error", reason: "no-room", message: "먼저 코드로 세션에 참여하세요." });
+      return;
+    }
+    if (sizeBytes > RELAY_MAX_PAYLOAD_BYTES) {
+      conn.send({ type: "error", reason: "too-large", message: "청크가 너무 큽니다." });
+      return;
+    }
+    if (msg.seq === 0 && this.rateLimited(info)) {
+      conn.send({ type: "error", reason: "rate-limited", message: "전송이 너무 잦습니다." });
+      return;
+    }
+    const room = this.rooms.get(info.code);
+    if (!room || room.figma.size === 0) {
+      conn.send({ type: "error", reason: "no-peer", message: "연결된 Figma 플러그인이 없습니다." });
+      return;
+    }
+    if (!info.chunkBytes) info.chunkBytes = new Map();
+    const acc = (info.chunkBytes.get(msg.id) ?? 0) + sizeBytes;
+    if (acc > RELAY_MAX_TOTAL_BYTES) {
+      info.chunkBytes.delete(msg.id);
+      conn.send({ type: "error", reason: "too-large", message: "페이로드가 너무 큽니다." });
+      return;
+    }
+    info.chunkBytes.set(msg.id, acc);
+    room.last = Date.now();
+
+    let delivered = 0;
+    for (const f of room.figma) {
+      f.send({ type: "h2f-chunk", id: msg.id, seq: msg.seq, total: msg.total, data: msg.data });
+      delivered++;
+    }
+    if (msg.seq >= msg.total - 1) {
+      info.chunkBytes.delete(msg.id);
+      conn.send({ type: "ack", delivered });
+    }
   }
 
   private rateLimited(info: ConnInfo): boolean {

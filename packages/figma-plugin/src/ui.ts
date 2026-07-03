@@ -137,6 +137,8 @@ bridgeConnectBtn.addEventListener("click", () => {
     } else if (msg.type === "h2f" && msg.payload) {
       setStatus("릴레이 수신 — 임포트 중…");
       doImport(msg.payload as H2FFile);
+    } else if (msg.type === "h2f-chunk") {
+      receiveChunk(msg);
     }
   };
   ws.onclose = () => {
@@ -149,6 +151,38 @@ bridgeConnectBtn.addEventListener("click", () => {
     setBridgeState(false, "오류 (릴레이 실행/주소 확인)");
   };
 });
+
+/* ---------------- 청크 재조립 (큰 페이로드 수신) ---------------- */
+
+interface ChunkBuf {
+  parts: string[];
+  received: number;
+  total: number;
+}
+const chunkBufs = new Map<string, ChunkBuf>();
+
+function receiveChunk(msg: Extract<RelayServerMsg, { type: "h2f-chunk" }>) {
+  let buf = chunkBufs.get(msg.id);
+  if (!buf) {
+    buf = { parts: new Array(msg.total), received: 0, total: msg.total };
+    chunkBufs.set(msg.id, buf);
+  }
+  if (buf.parts[msg.seq] === undefined) {
+    buf.parts[msg.seq] = msg.data;
+    buf.received++;
+  }
+  setStatus(`릴레이 수신 중… (${buf.received}/${buf.total})`);
+  if (buf.received >= buf.total) {
+    chunkBufs.delete(msg.id);
+    try {
+      const parsed = JSON.parse(buf.parts.join("")) as H2FFile;
+      setStatus("릴레이 수신 완료 — 임포트 중…");
+      doImport(parsed);
+    } catch {
+      setStatus("수신 데이터 파싱 실패");
+    }
+  }
+}
 
 window.onmessage = (event: MessageEvent) => {
   const msg = event.data.pluginMessage;

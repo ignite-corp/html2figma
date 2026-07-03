@@ -77,6 +77,35 @@ console.log("에러 처리:");
   A(ext4.last().reason === "too-large", "과대 페이로드 → too-large");
 }
 
+console.log("청크 전송(큰 페이로드 분할):");
+{
+  const hub = new RelayHub();
+  const figma = mkConn();
+  send(hub, figma, { type: "create-room" });
+  const code = figma.last().code;
+  const ext = mkConn();
+  send(hub, ext, { type: "join", code });
+
+  // 큰 페이로드를 3청크로 나눠 전송. 마지막 청크에서만 ack.
+  const body = JSON.stringify(doc("BIG"));
+  const parts = [body.slice(0, 10), body.slice(10, 20), body.slice(20)];
+  send(hub, ext, { type: "h2f-chunk", id: "t1", seq: 0, total: 3, data: parts[0] });
+  A(ext.last().type !== "ack", "첫 청크엔 ack 없음");
+  send(hub, ext, { type: "h2f-chunk", id: "t1", seq: 1, total: 3, data: parts[1] });
+  send(hub, ext, { type: "h2f-chunk", id: "t1", seq: 2, total: 3, data: parts[2] });
+  A(ext.last().type === "ack" && ext.last().delivered === 1, "마지막 청크에서 ack delivered=1");
+
+  const got = figma.inbox.filter((m) => m.type === "h2f-chunk");
+  A(got.length === 3, "figma 가 3청크 모두 수신");
+  const reassembled = got.sort((a, b) => a.seq - b.seq).map((m) => m.data).join("");
+  A(reassembled === body, "재조립 결과가 원본과 동일");
+
+  // 미참여 상태 청크 전송 → 에러
+  const ext2 = mkConn();
+  send(hub, ext2, { type: "h2f-chunk", id: "x", seq: 0, total: 1, data: "y" });
+  A(ext2.last().type === "error", "미참여 상태 청크 → 에러");
+}
+
 console.log("연결 종료 처리:");
 {
   const hub = new RelayHub();

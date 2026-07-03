@@ -23,8 +23,18 @@ export const RELAY_CODE_LEN = 6;
  */
 export const RELAY_CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
-/** 릴레이가 허용하는 최대 페이로드 크기(바이트). 벌크 캡처를 고려해 넉넉히 잡되 남용은 차단. */
+/** 릴레이가 허용하는 최대 페이로드 크기(바이트). 개별 메시지(청크 포함) 프레임 상한. */
 export const RELAY_MAX_PAYLOAD_BYTES = 40 * 1024 * 1024;
+
+/**
+ * 청크 전송 시 한 청크에 담는 최대 문자 수.
+ * Cloudflare Durable Object 의 WS 메시지 상한(1MiB)과 JSON 이스케이프 여유를 고려해
+ * 넉넉히 작게 잡는다(대부분 base64 ASCII 라 문자 수≈바이트 수).
+ */
+export const RELAY_CHUNK_CHARS = 256 * 1024;
+
+/** 청크 전송 전체(재조립본) 상한. 남용 방지용 안전장치. */
+export const RELAY_MAX_TOTAL_BYTES = 300 * 1024 * 1024;
 
 /** 활동 없는 룸을 정리하기까지의 시간(ms). */
 export const RELAY_ROOM_TTL_MS = 60 * 60 * 1000;
@@ -33,7 +43,8 @@ export const RELAY_ROOM_TTL_MS = 60 * 60 * 1000;
 export type RelayClientMsg =
   | { type: "create-room" }
   | { type: "join"; code: string }
-  | { type: "h2f"; payload: H2FFile };
+  | { type: "h2f"; payload: H2FFile }
+  | { type: "h2f-chunk"; id: string; seq: number; total: number; data: string };
 
 /** 서버 → 클라이언트 메시지. */
 export type RelayServerMsg =
@@ -41,6 +52,7 @@ export type RelayServerMsg =
   | { type: "peer-joined" }
   | { type: "joined" }
   | { type: "h2f"; payload: H2FFile }
+  | { type: "h2f-chunk"; id: string; seq: number; total: number; data: string }
   | { type: "ack"; delivered: number }
   | { type: "error"; reason: RelayErrorReason; message: string };
 
