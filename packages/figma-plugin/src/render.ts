@@ -119,10 +119,12 @@ export class Renderer {
       try {
         const svgNode = figma.createNodeFromSvg(asset.markup);
         svgNode.name = node.name || "svg";
-        if (node.layout.width > 0 && node.layout.height > 0) {
+        const tw = node.layout.width;
+        const th = node.layout.height;
+        if (tw > 0 && th > 0) {
           // createNodeFromSvg 는 SVG viewBox 크기의 프레임을 만든다. resize() 만 하면
           // 프레임만 커지고 내부 벡터 패스는 원래 크기로 남아 넘치거나 잘린다.
-          // 자식 제약을 SCALE 로 두면 프레임 리사이즈에 맞춰 패스도 스케일된다(object-fit:fill 과 동일).
+          // 자식 제약을 SCALE 로 두면 프레임 리사이즈에 맞춰 패스도 스케일된다.
           for (const child of svgNode.children) {
             if ("constraints" in child) {
               (child as SceneNode & { constraints: Constraints }).constraints = {
@@ -131,9 +133,29 @@ export class Renderer {
               };
             }
           }
-          svgNode.resize(Math.max(1, node.layout.width), Math.max(1, node.layout.height));
+          // SVG 로고/아이콘은 원본 비율을 유지한다(object-fit:contain 처럼 박스 안에 맞춤).
+          // 페이지 CSS 가 object-fit:fill 로 비율을 무시하더라도, 늘어난 로고보다
+          // 원본 비율을 보존하는 편이 디자인 용도로 더 유용하다.
+          const iw = svgNode.width;
+          const ih = svgNode.height;
+          if (iw > 0 && ih > 0) {
+            const scale = Math.min(tw / iw, th / ih);
+            const nw = Math.max(1, iw * scale);
+            const nh = Math.max(1, ih * scale);
+            svgNode.resize(nw, nh);
+            this.position(svgNode, node, parentX, parentY);
+            // 비율 유지로 남는 여백만큼 박스 중앙에 배치
+            if ("x" in svgNode) {
+              svgNode.x += (tw - nw) / 2;
+              svgNode.y += (th - nh) / 2;
+            }
+          } else {
+            svgNode.resize(Math.max(1, tw), Math.max(1, th));
+            this.position(svgNode, node, parentX, parentY);
+          }
+        } else {
+          this.position(svgNode, node, parentX, parentY);
         }
-        this.position(svgNode, node, parentX, parentY);
         return svgNode;
       } catch {
         /* 파싱 실패 시 플레이스홀더로 대체 */
