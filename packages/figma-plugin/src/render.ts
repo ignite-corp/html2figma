@@ -120,7 +120,17 @@ export class Renderer {
         const svgNode = figma.createNodeFromSvg(asset.markup);
         svgNode.name = node.name || "svg";
         if (node.layout.width > 0 && node.layout.height > 0) {
-          svgNode.rescale(1); // 정규화
+          // createNodeFromSvg 는 SVG viewBox 크기의 프레임을 만든다. resize() 만 하면
+          // 프레임만 커지고 내부 벡터 패스는 원래 크기로 남아 넘치거나 잘린다.
+          // 자식 제약을 SCALE 로 두면 프레임 리사이즈에 맞춰 패스도 스케일된다(object-fit:fill 과 동일).
+          for (const child of svgNode.children) {
+            if ("constraints" in child) {
+              (child as SceneNode & { constraints: Constraints }).constraints = {
+                horizontal: "SCALE",
+                vertical: "SCALE",
+              };
+            }
+          }
           svgNode.resize(Math.max(1, node.layout.width), Math.max(1, node.layout.height));
         }
         this.position(svgNode, node, parentX, parentY);
