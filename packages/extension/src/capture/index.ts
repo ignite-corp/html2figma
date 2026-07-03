@@ -120,8 +120,54 @@ async function collectPseudoIcons(session: CdpSession): Promise<PseudoIcon[]> {
         if (w > 600 || h > 600) continue;
         const sx = window.scrollX || 0;
         const sy = window.scrollY || 0;
-        const x = rect.left + sx + (rect.width - w) / 2;
-        const y = rect.top + sy + (rect.height - h) / 2;
+        // ::before/::after 는 대개 position:absolute 로 특정 위치(오른쪽 화살표 등)에 놓인다.
+        // 호스트 박스 중앙에 두면 위치가 어긋나므로, 절대 오프셋(left/right/top/bottom)과
+        // transform translate 를 반영해 실제 위치를 계산한다. 오프셋이 없으면 중앙 정렬로 폴백.
+        const num = (v: string) => {
+          const n = parseFloat(v);
+          return Number.isFinite(n) ? n : null;
+        };
+        const isAuto = (v: string) => !v || v === "auto";
+        const posT = cs.position;
+        const left = num(cs.left),
+          right = num(cs.right),
+          top = num(cs.top),
+          bottom = num(cs.bottom);
+        let x: number, y: number;
+        if (posT === "absolute" || posT === "fixed") {
+          if (!isAuto(cs.left) && left != null) x = rect.left + sx + left;
+          else if (!isAuto(cs.right) && right != null)
+            x = rect.left + rect.width + sx - right - w;
+          else x = rect.left + sx + (rect.width - w) / 2;
+          if (!isAuto(cs.top) && top != null) y = rect.top + sy + top;
+          else if (!isAuto(cs.bottom) && bottom != null)
+            y = rect.top + rect.height + sy - bottom - h;
+          else y = rect.top + sy + (rect.height - h) / 2;
+        } else {
+          x = rect.left + sx + (rect.width - w) / 2;
+          y = rect.top + sy + (rect.height - h) / 2;
+        }
+        // transform 의 translate 성분 반영(matrix / matrix3d)
+        const tm = cs.transform;
+        if (tm && tm !== "none") {
+          const m2 = tm.match(/matrix\(([^)]+)\)/);
+          if (m2) {
+            const parts = m2[1].split(",").map((s) => parseFloat(s));
+            if (parts.length >= 6) {
+              x += parts[4];
+              y += parts[5];
+            }
+          } else {
+            const m3 = tm.match(/matrix3d\(([^)]+)\)/);
+            if (m3) {
+              const parts = m3[1].split(",").map((s) => parseFloat(s));
+              if (parts.length >= 14) {
+                x += parts[12];
+                y += parts[13];
+              }
+            }
+          }
+        }
         const svg = /^data:image\/svg\+xml/i.test(url) || /\.svg(\?|$)/i.test(url);
         out.push({ url, x, y, w, h, svg });
       }
