@@ -149,6 +149,9 @@ export class Renderer {
     frame.name = node.name;
     frame.resize(Math.max(1, node.layout.width), Math.max(1, node.layout.height));
     frame.fills = [];
+    // Figma 프레임 기본값은 clipsContent=true 이지만, 웹 기본값은 overflow:visible 이다.
+    // 스타일에서 명시하지 않으면 넘치는 자식을 자르지 않도록 false 로 둔다.
+    frame.clipsContent = false;
     this.applyStyle(frame, node);
 
     for (const child of node.children) {

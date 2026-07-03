@@ -1,5 +1,6 @@
 import { parseAllDocuments, parseSnapshot, type CaptureSnapshotResult } from "../src/capture/snapshot.js";
 import { buildIR } from "../src/capture/builder.js";
+import { mapStyle } from "../src/capture/style.js";
 import { COMPUTED_STYLES } from "../src/capture/styleProps.js";
 import { parseCssColor } from "@html2figma/shared";
 
@@ -352,6 +353,25 @@ const noScale = parseAllDocuments(snapshot4);
 assert(
   noScale.documents[0].root?.layout?.bounds[2] === 800,
   "scale 기본값 1 이면 bounds 그대로(800)"
+);
+
+/* ---------------- overflow → clipsContent 매핑 케이스 ---------------- */
+console.log("\nclipsContent 매핑:");
+assert(
+  mapStyle({ overflow: "visible" }).clipsContent === false,
+  "overflow:visible → clipsContent=false (넘치는 자식 안 자름)"
+);
+assert(
+  mapStyle({}).clipsContent === false,
+  "overflow 미지정(기본 visible) → clipsContent=false"
+);
+assert(
+  mapStyle({ overflow: "hidden" }).clipsContent === true,
+  "overflow:hidden → clipsContent=true"
+);
+assert(
+  mapStyle({ "overflow-x": "auto" }).clipsContent === true,
+  "overflow-x:auto → clipsContent=true"
 );
 
 console.log(failures === 0 ? "\n✅ 모든 테스트 통과" : `\n❌ ${failures}개 실패`);

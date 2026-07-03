@@ -184,6 +184,10 @@ export function mapStyle(s: ComputedStyleMap): Style {
   const overflow = s["overflow"] ?? s["overflow-x"] ?? "visible";
   if (overflow === "hidden" || overflow === "clip" || overflow === "scroll" || overflow === "auto") {
     style.clipsContent = true;
+  } else {
+    // overflow:visible 는 박스 밖으로 넘치는 자식도 그린다.
+    // Figma createFrame() 기본값(clipsContent=true)이 이를 잘라내지 않도록 명시적으로 끈다.
+    style.clipsContent = false;
   }
 
   return style;
