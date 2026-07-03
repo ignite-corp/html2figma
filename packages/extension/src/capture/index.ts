@@ -33,10 +33,18 @@ async function measurePage(
     const m = await session.send<{
       cssContentSize?: { width: number; height: number };
       contentSize?: { width: number; height: number };
+      cssLayoutViewport?: { clientWidth: number; clientHeight: number };
     }>("Page.getLayoutMetrics");
     const cssH = m?.cssContentSize?.height ?? m?.contentSize?.height ?? fallbackHeight;
     const cssHeight = Math.min(Math.max(Math.ceil(cssH), fallbackHeight), MAX_PAGE_HEIGHT);
-    const cssW = m?.cssContentSize?.width ?? m?.contentSize?.width ?? fallbackWidth;
+    // 폭은 세로 스크롤 영역과 달리 "화면에 채워지는 너비"(레이아웃 뷰포트)를 쓴다.
+    // cssContentSize.width 는 가로 스크롤되는 캐러셀 등 오프스크린 요소까지 포함해
+    // 실제 body 폭보다 넓어질 수 있어 footer 등이 우측 끝까지 안 채워지는 것처럼 보인다.
+    const cssW =
+      m?.cssLayoutViewport?.clientWidth ??
+      m?.cssContentSize?.width ??
+      m?.contentSize?.width ??
+      fallbackWidth;
     const cssWidth = Math.min(Math.max(Math.ceil(cssW), fallbackWidth), MAX_PAGE_WIDTH);
     // DOMSnapshot bounds 는 device px(레티나면 ×DPR)로 오는데 font-size 는 CSS px 이다.
     // 두 값을 일치시키기 위해 배율을 구해 좌표를 CSS px 로 정규화한다.
