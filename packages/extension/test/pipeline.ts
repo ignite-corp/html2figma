@@ -798,5 +798,74 @@ assert(
   "병합 텍스트가 '20,000km / 1년' (조각 사이 공백 보존)"
 );
 
+/* ---------------- transform 으로 이동된 트랙(swiper) 밖 박스의 클립 케이스 ---------------- */
+// swiper 캐러셀: .swiper(overflow:hidden 클립창)=x355..635, 그 안의 .swiper-wrapper 는
+// translateX(-280) 때문에 bounds 가 x75..355(클립 왼쪽 밖)로 잡힌다. wrapper 는 자식을
+// 자기 박스에 가두지 않으므로(overflow:visible), wrapper 박스가 클립 밖이라고 서브트리를
+// 통째로 버리면 실제로 보이는 활성 슬라이드 이미지까지 사라진다(기아 CPO 광고 배너).
+// → 숨은 슬라이드(x75) 이미지는 제거, 활성 슬라이드(x355) 이미지는 유지돼야 한다.
+console.log("\ntransform 이동 트랙(swiper) 밖 박스 클립:");
+const swiperSnap: CaptureSnapshotResult = {
+  strings,
+  documents: [
+    {
+      documentURL: intern("https://cpo.kia.com/"),
+      title: intern("swiper"),
+      nodes: {
+        parentIndex: [-1, 0, 1, 2, 1, 4],
+        nodeType: [1, 1, 1, 1, 1, 1],
+        nodeName: [
+          intern("DIV"), // 0 swiper (clip)
+          intern("DIV"), // 1 swiper-wrapper (translated track)
+          intern("DIV"), // 2 slide-next (off-screen left)
+          intern("IMG"), // 3 img-next (dropped)
+          intern("DIV"), // 4 slide-active (visible)
+          intern("IMG"), // 5 img-active (kept)
+        ],
+        nodeValue: [intern(""), intern(""), intern(""), intern(""), intern(""), intern("")],
+        backendNodeId: [1, 2, 3, 4, 5, 6],
+        attributes: [
+          [],
+          [],
+          [],
+          [intern("src"), intern("https://cpo-cdn.kia.com/public/banner/HIDDEN.png")],
+          [],
+          [intern("src"), intern("https://cpo-cdn.kia.com/public/banner/ACTIVE.png")],
+        ],
+      },
+      layout: {
+        nodeIndex: [0, 1, 2, 3, 4, 5],
+        styles: [
+          styleRow({ display: "block", overflow: "hidden", "overflow-x": "hidden", "overflow-y": "hidden" }),
+          styleRow({ display: "flex" }), // wrapper: overflow visible
+          styleRow({ display: "block" }),
+          styleRow({ display: "block", position: "absolute" }),
+          styleRow({ display: "block" }),
+          styleRow({ display: "block", position: "absolute" }),
+        ],
+        bounds: [
+          [355, 760, 280, 343], // swiper 클립창
+          [75, 760, 280, 343], // wrapper (translateX -280) → 클립 왼쪽 밖
+          [75, 760, 280, 343], // slide-next (off-screen)
+          [75, 723, 280, 415], // img-next → 제거 대상
+          [355, 760, 280, 343], // slide-active (visible)
+          [355, 723, 280, 415], // img-active → 유지 대상
+        ],
+        text: [intern(""), intern(""), intern(""), intern(""), intern(""), intern("")],
+      },
+    },
+  ],
+} as unknown as CaptureSnapshotResult;
+
+const swiperIR = buildIR(parseAllDocuments(swiperSnap));
+assert(
+  swiperIR.imageUrls.has("https://cpo-cdn.kia.com/public/banner/ACTIVE.png"),
+  "translateX 로 이동된 트랙 밖이어도 클립 안 활성 슬라이드 이미지는 유지됨"
+);
+assert(
+  !swiperIR.imageUrls.has("https://cpo-cdn.kia.com/public/banner/HIDDEN.png"),
+  "클립 밖 숨은 슬라이드 이미지는 제거됨"
+);
+
 console.log(failures === 0 ? "\n✅ 모든 테스트 통과" : `\n❌ ${failures}개 실패`);
 process.exit(failures === 0 ? 0 : 1);

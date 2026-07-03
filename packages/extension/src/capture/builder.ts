@@ -294,13 +294,22 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
     const rl = node.layout;
     // 오버플로 클리핑: 조상이 overflow hidden/clip/scroll/auto 로 잘라내는 영역 밖이면 서브트리 제거.
     // (예: height:0; overflow:hidden 로 접힌 드롭다운/아코디언은 브라우저에서 안 보인다)
-    // 단, 자기 박스가 0크기(예: position:absolute 자식만 감싸 접힌 인라인 <a>/<span>)면
-    // 이 노드 자체는 그리는 게 없고, 절대배치된 자손은 부모 박스와 무관하게 다른 위치에
-    // 보일 수 있으므로 서브트리를 통째로 버리지 않는다. 자손은 각자 자기 박스로 클립 판정된다.
+    // 단, 서브트리를 통째로 버리는 건 이 노드가 자식을 "자기 박스 안에 가둘" 때만 안전하다:
+    //  - 자기 박스가 0크기(예: position:absolute 자식만 감싸 접힌 인라인 <a>/<span>)면
+    //    자손이 부모 박스와 무관한 위치에 보일 수 있다.
+    //  - overflow:visible 컨테이너(예: transform 으로 이동된 swiper 트랙)는 자식이 자기
+    //    박스 밖(=클립 안)에 있을 수 있다. 이때 노드 박스가 클립 밖이어도 자식까지 버리면
+    //    실제로 보이는 자식(활성 슬라이드 등)이 사라진다.
+    // 그래서 위 경우엔 이 노드 자신만 건너뛰고 자손을 각자 개별 클립 판정한다.
     if (rl) {
       const [, , bw, bh] = rl.bounds;
       const hasArea = bw > 0 && bh > 0;
-      if (hasArea && isOutsideClip(edgesOf(rl, ox, oy), clip)) return [];
+      if (hasArea && isOutsideClip(edgesOf(rl, ox, oy), clip)) {
+        const confinesChildren = clipsOverflow(rl.styles);
+        const hasElementChildren = node.children.some((c) => c.nodeType === 1);
+        if (confinesChildren || !hasElementChildren) return [];
+        return node.children.flatMap((c) => build(c, ox, oy, clip));
+      }
     }
 
     // 이 요소가 오버플로를 자르면 자손 클립 영역을 자신의 박스로 좁힌다.
