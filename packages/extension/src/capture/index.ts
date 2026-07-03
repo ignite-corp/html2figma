@@ -30,6 +30,34 @@ const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** 문서 전체 크기(CSS px)와 device px 배율(DPR)을 측정. 실패 시 fallback. 폭주 방지 상한. */
 const MAX_PAGE_HEIGHT = 30000;
 const MAX_PAGE_WIDTH = 10000;
+/**
+ * 탭의 실제 CSS 뷰포트 크기를 읽는다.
+ * desktop 캡처를 고정 폭(1440)이 아니라 사용자가 실제로 보고 있는 창 폭에
+ * 맞추기 위한 값으로, 반응형 그리드의 컬럼 수(예: 1440=3열 vs 1600↑=4열)가
+ * 사용자 화면과 달라지는 문제를 막는다.
+ */
+async function readRealViewport(
+  session: CdpSession
+): Promise<{ width: number; height: number } | null> {
+  try {
+    const res = await session.send<{ result?: { value?: string } }>(
+      "Runtime.evaluate",
+      {
+        expression:
+          "JSON.stringify({w:window.innerWidth,h:window.innerHeight})",
+        returnByValue: false,
+      }
+    );
+    const raw = res?.result?.value;
+    if (!raw) return null;
+    const v = JSON.parse(raw) as { w?: number; h?: number };
+    if (!v.w || !v.h) return null;
+    return { width: Math.round(v.w), height: Math.round(v.h) };
+  } catch {
+    return null;
+  }
+}
+
 async function measurePage(
   session: CdpSession,
   fallbackWidth: number,
@@ -143,6 +171,16 @@ export async function capturePage(
     await session.send("DOMSnapshot.enable");
 
     onProgress?.("뷰포트 설정", 0.15);
+    // desktop 프리셋은 고정 폭(1440) 대신 사용자가 실제로 보고 있는 창 폭을 사용해
+    // 반응형 레이아웃(그리드 컬럼 수 등)이 사용자 화면과 동일하게 캡처되도록 한다.
+    // tablet/mobile 은 의도된 기기 에뮬레이션이므로 프리셋 폭을 유지한다.
+    if (preset === "desktop") {
+      const real = await readRealViewport(session);
+      if (real && real.width >= 1024) {
+        vp.width = real.width;
+        vp.height = Math.max(real.height, vp.height);
+      }
+    }
     await session.send("Emulation.setDeviceMetricsOverride", {
       width: vp.width,
       height: vp.height,
