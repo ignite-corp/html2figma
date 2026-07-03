@@ -33,18 +33,10 @@ async function measurePage(
     const m = await session.send<{
       cssContentSize?: { width: number; height: number };
       contentSize?: { width: number; height: number };
-      cssLayoutViewport?: { clientWidth: number; clientHeight: number };
     }>("Page.getLayoutMetrics");
     const cssH = m?.cssContentSize?.height ?? m?.contentSize?.height ?? fallbackHeight;
     const cssHeight = Math.min(Math.max(Math.ceil(cssH), fallbackHeight), MAX_PAGE_HEIGHT);
-    // 폭은 세로 스크롤 영역과 달리 "화면에 채워지는 너비"(레이아웃 뷰포트)를 쓴다.
-    // cssContentSize.width 는 가로 스크롤되는 캐러셀 등 오프스크린 요소까지 포함해
-    // 실제 body 폭보다 넓어질 수 있어 footer 등이 우측 끝까지 안 채워지는 것처럼 보인다.
-    const cssW =
-      m?.cssLayoutViewport?.clientWidth ??
-      m?.cssContentSize?.width ??
-      m?.contentSize?.width ??
-      fallbackWidth;
+    const cssW = m?.cssContentSize?.width ?? m?.contentSize?.width ?? fallbackWidth;
     const cssWidth = Math.min(Math.max(Math.ceil(cssW), fallbackWidth), MAX_PAGE_WIDTH);
     // DOMSnapshot bounds 는 device px(레티나면 ×DPR)로 오는데 font-size 는 CSS px 이다.
     // 두 값을 일치시키기 위해 배율을 구해 좌표를 CSS px 로 정규화한다.
@@ -68,6 +60,23 @@ interface PseudoIcon {
   w: number;
   h: number;
   svg: boolean;
+}
+
+/**
+ * IR 트리에서 가장 넓은 노드의 폭을 구한다.
+ * 대개 full-width 레이아웃 컨테이너(body/.wrap 등)의 폭이며, 좁게 삐져나온
+ * bleed 요소(가로 캐러셀 등)는 폭 자체가 작아 자연스럽게 제외된다.
+ */
+function maxWidthOf(node: H2FNode): number {
+  let w = node.layout?.width ?? 0;
+  const kids = (node as { children?: H2FNode[] }).children;
+  if (Array.isArray(kids)) {
+    for (const c of kids) {
+      const cw = maxWidthOf(c);
+      if (cw > w) w = cw;
+    }
+  }
+  return w;
 }
 
 /**
@@ -278,12 +287,20 @@ export async function capturePage(
     const { root, imageUrls, svgRequests, svgUrlRequests } = buildIR(parsed);
     if (!root) throw new Error("변환할 노드가 없습니다.");
 
-    // 루트 프레임을 브라우저가 측정한 실제 페이지 크기로 맞춘다.
-    // (min-width 고정 레이아웃 등으로 자식이 body 폭을 넘어도 흰 배경이 전 영역을 덮게 함)
+    // 루트 프레임 폭을 "실제 레이아웃 폭"에 맞춘다.
+    //  - cssContentSize.width(fullWidth)는 가로로 삐져나온 캐러셀 등 오프스크린 bleed 까지
+    //    포함해 실제 레이아웃보다 넓어져, footer 처럼 width:100% 인 요소가 우측 끝까지
+    //    안 채워지는 것처럼 보인다.
+    //  - 반대로 뷰포트 폭만 쓰면 min-width 고정 레이아웃(예: min-width:1600)이 뷰포트보다
+    //    넓을 때 콘텐츠가 잘린다.
+    // 해결: 트리에서 가장 넓은 노드 폭(대개 full-width 레이아웃 컨테이너)을 레이아웃 폭으로 보고
+    //       뷰포트와 스크롤 폭(bleed 상한) 사이로 클램프한다. 좁은 bleed 요소는 폭이 작아 제외됨.
     if (root.type === "frame") {
+      const maxNodeWidth = maxWidthOf(root);
+      const layoutWidth = Math.min(maxNodeWidth, fullWidth);
       root.layout = {
         ...root.layout,
-        width: Math.max(root.layout.width, fullWidth),
+        width: Math.max(root.layout.width, vp.width, layoutWidth),
         height: Math.max(root.layout.height, fullHeight),
       };
     }
