@@ -63,12 +63,20 @@ export async function collectPseudoIcons(session: CdpSession): Promise<PseudoIco
         if (!cs || cs.display === "none") continue;
         if (cs.content === "none" || cs.content === "normal" || !cs.content) continue;
         let url: string | null = null;
-        const bm = cs.backgroundImage && cs.backgroundImage.match(/url\(["']?([^"')]+)["']?\)/);
-        if (bm) url = bm[1];
-        if (!url) {
-          const cm = cs.content.match(/url\(["']?([^"')]+)["']?\)/);
-          if (cm) url = cm[1];
-        }
+        // url("...") 안의 값을 안전하게 추출한다. URL 인코딩된 SVG data URL 은 내부에
+        // 작은따옴표(xmlns='...')를 포함하므로 [^"')]+ 로 뽑으면 첫 따옴표에서 잘린다.
+        // 따옴표 종류에 맞춰 닫는 따옴표까지 통째로 캡처한다.
+        const extractUrl = (v: string): string | null => {
+          if (!v) return null;
+          let m = v.match(/url\(\s*"([^"]*)"\s*\)/);
+          if (m) return m[1];
+          m = v.match(/url\(\s*'([^']*)'\s*\)/);
+          if (m) return m[1];
+          m = v.match(/url\(\s*([^)]*?)\s*\)/);
+          return m ? m[1] : null;
+        };
+        if (cs.backgroundImage && cs.backgroundImage !== "none") url = extractUrl(cs.backgroundImage);
+        if (!url) url = extractUrl(cs.content);
         // 아이콘(background-image/content url)이 없으면 눈에 보이는 단색 배경
         // (밑줄·구분선 등)인지 확인한다. 배경도 없으면(clearfix 등) 건너뛴다.
         let solidBg: string | null = null;
@@ -125,8 +133,19 @@ export async function collectPseudoIcons(session: CdpSession): Promise<PseudoIco
             y = rect.top + rect.height + sy - bottom - h;
           else y = rect.top + sy + (rect.height - h) / 2;
         } else {
-          x = rect.left + sx + (rect.width - w) / 2;
-          y = rect.top + sy + (rect.height - h) / 2;
+          // 정적/상대 배치 의사요소는 인라인 흐름의 시작(콘텐츠 앞)에 온다(예: 좋아요 하트).
+          // 호스트 박스 중앙에 두면(특히 넓은 한 줄 텍스트) 위치가 크게 어긋나므로,
+          // 콘텐츠 좌측 + 첫 줄 세로 중앙으로 배치한다. relative 면 left/top 오프셋을 더한다.
+          const hostCs = getComputedStyle(el);
+          const padL = parseFloat(hostCs.paddingLeft) || 0;
+          const lhNum = parseFloat(hostCs.lineHeight);
+          const lineH = Number.isFinite(lhNum) ? lhNum : rect.height;
+          x = rect.left + sx + padL;
+          y = rect.top + sy + Math.max(0, (Math.min(lineH, rect.height) - h) / 2);
+          if (posT === "relative") {
+            if (!isAuto(cs.left) && left != null) x += left;
+            if (!isAuto(cs.top) && top != null) y += top;
+          }
         }
         // transform 의 translate 성분 반영(matrix / matrix3d)
         const tm = cs.transform;

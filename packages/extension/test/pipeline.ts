@@ -749,5 +749,54 @@ assert(
   "0×0 인라인 <a> 로 감싼 절대배치 이미지가 오버플로 클립 안에서 유지됨"
 );
 
+/* ---------------- 인접 텍스트 노드 병합 (조각 겹침 방지) ---------------- */
+// <strong>{"20,000"}{"km / "}{"1년"}</strong> 처럼 사이에 요소가 없는 연속 텍스트 노드는
+// 하나로 병합돼야 한다(각 조각을 개별 노드로 두면 Figma 폰트 대체 시 폭이 달라 겹침).
+console.log("\n인접 텍스트 노드 병합:");
+function adjTextSnap(): CaptureSnapshotResult {
+  const s: string[] = [""];
+  const it = (v: string) => {
+    const i = s.indexOf(v);
+    if (i >= 0) return i;
+    s.push(v);
+    return s.length - 1;
+  };
+  const row = (m: Record<string, string>) => COMPUTED_STYLES.map((n) => it(m[n] ?? ""));
+  return {
+    strings: s,
+    documents: [
+      {
+        documentURL: it("https://example.com"),
+        title: it("adj"),
+        nodes: {
+          parentIndex: [-1, 0, 0, 0],
+          nodeType: [1, 3, 3, 3],
+          nodeName: [it("STRONG"), it("#text"), it("#text"), it("#text")],
+          nodeValue: [it(""), it("20,000"), it("km / "), it("1년")],
+          backendNodeId: [1, 2, 3, 4],
+          attributes: [[], [], [], []],
+        },
+        layout: {
+          nodeIndex: [0, 1, 2, 3],
+          styles: [row({ display: "block" }), row({}), row({}), row({})],
+          bounds: [
+            [0, 0, 116, 19],
+            [0, 0, 56, 19],
+            [56, 0, 38, 19],
+            [94, 0, 22, 19],
+          ],
+          text: [it(""), it("20,000"), it("km / "), it("1년")],
+        },
+      },
+    ],
+  } as unknown as CaptureSnapshotResult;
+}
+const adjTexts = collectTexts(buildIR(parseAllDocuments(adjTextSnap())).root);
+assert(adjTexts.length === 1, "연속 텍스트 노드 3개가 1개로 병합됨");
+assert(
+  (adjTexts[0] as { characters?: string }).characters === "20,000km / 1년",
+  "병합 텍스트가 '20,000km / 1년' (조각 사이 공백 보존)"
+);
+
 console.log(failures === 0 ? "\n✅ 모든 테스트 통과" : `\n❌ ${failures}개 실패`);
 process.exit(failures === 0 ? 0 : 1);

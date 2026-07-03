@@ -88,19 +88,33 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
     return true;
   }
 
-  // 직접 텍스트 자식들을 각자 자기 조각 bounds 위치에 개별 텍스트 노드로 만든다.
-  // 조각들을 하나로 합치면(예: <br> 로 \n 결합) 사이에 낀 인라인 요소(<strong> 등)
-  // 뒤의 텍스트가 인라인 요소 위에 겹쳐 렌더된다. 각 조각을 자기 위치에 두면 겹치지 않는다.
-  // 단일 텍스트 노드가 여러 줄로 흐른 경우는 조각이 하나뿐이라 buildText 의 폭 확장이 처리한다.
+  // 직접 텍스트 자식들을 텍스트 노드로 만든다. 사이에 요소(인라인 <strong>/<span>/<br> 등)가
+  // 없는 "연속된" 텍스트 노드들은 하나로 병합한다. React 가 `{a}km / {b}` 처럼 한 줄 텍스트를
+  // 여러 텍스트 노드로 쪼개 렌더하는 경우, 각 조각을 개별 노드로 두면 Figma 폰트 대체 시 조각
+  // 폭이 캡처 폭과 달라 서로 겹친다. 하나로 합치면 연속 텍스트로 흘러 겹치지 않는다.
+  // 사이에 요소가 낀 경우(예: <strong>)는 그 요소가 별도 렌더되므로 run 을 끊어 겹침을 막는다.
   function buildDirectTexts(node: RawNode, ox: number, oy: number): TextNode[] {
     const out: TextNode[] = [];
-    for (const c of node.children) {
-      if (c.nodeType !== 3) continue;
-      const text = (c.layout?.text ?? c.nodeValue).replace(/\s+/g, " ").trim();
-      if (!text) continue;
-      const t = buildText(node, text, c.layout, ox, oy);
+    let parts: string[] = [];
+    let firstLayout: RawNode["layout"];
+    const flush = () => {
+      const text = parts.join("").replace(/\s+/g, " ").trim();
+      const fl = firstLayout;
+      parts = [];
+      firstLayout = undefined;
+      if (!text) return;
+      const t = buildText(node, text, fl, ox, oy);
       if (t) out.push(t);
+    };
+    for (const c of node.children) {
+      if (c.nodeType === 3) {
+        if (!firstLayout && c.layout) firstLayout = c.layout;
+        parts.push(c.layout?.text ?? c.nodeValue);
+      } else {
+        flush();
+      }
     }
+    flush();
     return out;
   }
 

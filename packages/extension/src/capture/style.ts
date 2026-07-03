@@ -182,7 +182,14 @@ export function mapStyle(s: ComputedStyleMap): Style {
   if (!Number.isNaN(opacity) && opacity < 1) style.opacity = opacity;
 
   const overflow = s["overflow"] ?? s["overflow-x"] ?? "visible";
-  if (overflow === "hidden" || overflow === "clip" || overflow === "scroll" || overflow === "auto") {
+  // non-replaced 인라인 박스는 overflow 가 적용되지 않는다(브라우저는 인라인 <span>/<a>
+  // 의 overflow:hidden 을 무시하고 내용을 그대로 그린다). 인라인 요소를 클립하면 line-height
+  // 보다 낮은 박스 높이 때문에 글자 위아래가 잘린다(예: 버튼 라벨 span).
+  const isInline = s["display"] === "inline";
+  const clips =
+    !isInline &&
+    (overflow === "hidden" || overflow === "clip" || overflow === "scroll" || overflow === "auto");
+  if (clips) {
     style.clipsContent = true;
   } else {
     // overflow:visible 는 박스 밖으로 넘치는 자식도 그린다.

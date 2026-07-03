@@ -18,6 +18,8 @@ export function isClipVal(v: string | undefined): boolean {
 }
 
 export function clipsOverflow(styles: Record<string, string>): boolean {
+  // non-replaced 인라인 박스는 overflow 클리핑이 적용되지 않는다(브라우저 동작).
+  if (styles["display"] === "inline") return false;
   const ox = styles["overflow-x"] ?? styles["overflow"];
   const oy = styles["overflow-y"] ?? styles["overflow"];
   return isClipVal(ox) || isClipVal(oy);
