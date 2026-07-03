@@ -374,5 +374,59 @@ assert(
   "overflow-x:auto → clipsContent=true"
 );
 
+/* ---------------- SVG img → 벡터 + 루트 오버플로 확장/흰배경 케이스 ---------------- */
+console.log("\nSVG 이미지 + 루트 오버플로:");
+const blk = { display: "block" };
+const wideBlk = { display: "block", "background-color": "rgb(200, 200, 200)" };
+const ovSnap: CaptureSnapshotResult = {
+  strings,
+  documents: [
+    {
+      documentURL: intern("https://example.com"),
+      title: intern("ov"),
+      nodes: {
+        parentIndex: [-1, 0, 0],
+        nodeType: [1, 1, 1],
+        nodeName: [intern("DIV"), intern("IMG"), intern("DIV")],
+        nodeValue: [intern(""), intern(""), intern("")],
+        backendNodeId: [1, 2, 3],
+        attributes: [[], [intern("src"), intern("https://x/logo.svg")], []],
+      },
+      layout: {
+        nodeIndex: [0, 1, 2],
+        styles: [styleRow(blk), styleRow(blk), styleRow(wideBlk)],
+        // 루트 100x100 인데 자식 DIV 가 x+width=300 으로 오른쪽으로 오버플로
+        bounds: [
+          [0, 0, 100, 100],
+          [0, 0, 50, 20],
+          [0, 0, 300, 50],
+        ],
+        text: [intern(""), intern(""), intern("")],
+      },
+    },
+  ],
+} as unknown as CaptureSnapshotResult;
+
+const ov = buildIR(parseAllDocuments(ovSnap));
+const ovRoot = ov.root as import("@html2figma/shared").FrameNode | null;
+const svgVec = ovRoot?.children.find((c) => c.type === "vector");
+assert(
+  !!svgVec && svgVec.type === "vector" && svgVec.assetId.startsWith("svgimg:"),
+  "SVG <img> 는 벡터 노드로 변환됨"
+);
+assert(
+  ov.svgUrlRequests.some((r) => r.url === "https://x/logo.svg"),
+  "SVG <img> url 이 svgUrlRequests 에 등록됨"
+);
+assert(
+  !!ovRoot && ovRoot.layout.width >= 300,
+  "오버플로하는 자식을 덮도록 루트 폭이 확장됨(>=300)"
+);
+const rootFill = ovRoot?.style.fills?.[0];
+assert(
+  !!rootFill && rootFill.type === "solid" && rootFill.color.a >= 1,
+  "루트에 불투명(흰색) 배경이 깔림"
+);
+
 console.log(failures === 0 ? "\n✅ 모든 테스트 통과" : `\n❌ ${failures}개 실패`);
 process.exit(failures === 0 ? 0 : 1);
