@@ -653,5 +653,54 @@ assert(!merged, "인라인 요소 앞뒤 텍스트가 하나로 합쳐지지 않
 const tail = splitTexts.find((t) => (t as { characters?: string }).characters === "입니다");
 assert(!!tail && tail.layout.x >= 200, "strong 뒤 '입니다' 가 자기 위치(x≈228)에 배치됨(x=0 겹침 아님)");
 
+/* ---------------- 상대 이미지 URL → 절대 URL 해석 케이스 ---------------- */
+console.log("\n상대 이미지 URL 해석:");
+const relSnap: CaptureSnapshotResult = {
+  strings,
+  documents: [
+    {
+      documentURL: intern("https://cpo.kia.com/products/detail/?id=1"),
+      title: intern("rel"),
+      nodes: {
+        parentIndex: [-1, 0, 0],
+        nodeType: [1, 1, 1],
+        nodeName: [intern("DIV"), intern("IMG"), intern("IMG")],
+        nodeValue: [intern(""), intern(""), intern("")],
+        backendNodeId: [1, 2, 3],
+        // lazy 이미지: currentSourceURL 없이 상대 src 만 존재
+        attributes: [
+          [],
+          [intern("src"), intern("/assets/images/svg/icon.svg")],
+          [intern("src"), intern("/assets/images/photo.png")],
+        ],
+      },
+      layout: {
+        nodeIndex: [0, 1, 2],
+        styles: [
+          styleRow({ display: "block" }),
+          styleRow({ display: "block" }),
+          styleRow({ display: "block" }),
+        ],
+        bounds: [
+          [0, 0, 100, 100],
+          [0, 0, 50, 50],
+          [0, 60, 50, 30],
+        ],
+        text: [intern(""), intern(""), intern("")],
+      },
+    },
+  ],
+} as unknown as CaptureSnapshotResult;
+
+const relIR = buildIR(parseAllDocuments(relSnap));
+assert(
+  relIR.svgUrlRequests.some((r) => r.url === "https://cpo.kia.com/assets/images/svg/icon.svg"),
+  "상대 경로 SVG <img> src 가 페이지 기준 절대 URL 로 해석됨"
+);
+assert(
+  relIR.imageUrls.has("https://cpo.kia.com/assets/images/photo.png"),
+  "상대 경로 래스터 <img> src 가 페이지 기준 절대 URL 로 해석됨"
+);
+
 console.log(failures === 0 ? "\n✅ 모든 테스트 통과" : `\n❌ ${failures}개 실패`);
 process.exit(failures === 0 ? 0 : 1);

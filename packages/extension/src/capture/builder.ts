@@ -60,6 +60,20 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
   let idCounter = 0;
   const nextId = () => `n${idCounter++}`;
 
+  // 이미지 src 는 상대 URL(예: "/assets/img.svg")일 수 있다. lazy 이미지처럼
+  // 아직 로드되지 않아 currentSourceURL 이 비어 src 속성으로 폴백하면 상대 경로가
+  // 그대로 남는데, 백그라운드에서 fetch 하면 확장 프로그램 오리진 기준으로 해석돼
+  // 실패한다. 페이지 문서 URL 기준으로 절대 URL 로 변환해 유실을 막는다.
+  const baseUrl = docs[0]?.url || "";
+  function resolveUrl(url: string): string {
+    if (!url || /^(https?:|data:|blob:)/i.test(url)) return url;
+    try {
+      return new URL(url, baseUrl).href;
+    } catch {
+      return url;
+    }
+  }
+
   function layoutOf(node: RawNode, ox: number, oy: number): Layout | null {
     if (!node.layout) return null;
     const [x, y, width, height] = node.layout.bounds;
@@ -171,8 +185,9 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
   function buildImage(node: RawNode, ox: number, oy: number): H2FNode | null {
     const layout = layoutOf(node, ox, oy);
     if (!layout) return null;
-    const url = node.currentSourceURL || node.attributes["src"];
-    if (!url) return null;
+    const rawUrl = node.currentSourceURL || node.attributes["src"];
+    if (!rawUrl) return null;
+    const url = resolveUrl(rawUrl);
 
     // SVG 이미지는 래스터로 못 그리므로(figma.createImage 는 PNG/JPG 전용) 벡터로 처리
     if (isSvgUrl(url)) {
