@@ -594,5 +594,64 @@ assert(
   "여러 줄 텍스트 폭이 부모 h2 콘텐츠 폭(288)으로 확장됨(조각 폭 48 아님)"
 );
 
+/* ---------------- 인라인 요소 뒤 텍스트가 겹치지 않음 ---------------- */
+console.log("\n인라인 요소 사이 텍스트 조각:");
+function inlineSplitSnap(): CaptureSnapshotResult {
+  const s: string[] = [""];
+  const it = (v: string) => {
+    const i = s.indexOf(v);
+    if (i >= 0) return i;
+    s.push(v);
+    return s.length - 1;
+  };
+  const row = (m: Record<string, string>) => COMPUTED_STYLES.map((n) => it(m[n] ?? ""));
+  // <h3>200가지 테스트를 통과한 <br><strong>제조사 무사고 인증차량</strong>입니다</h3>
+  return {
+    strings: s,
+    documents: [
+      {
+        documentURL: it("https://example.com"),
+        title: it("split"),
+        nodes: {
+          parentIndex: [-1, 0, 1, 1, 1, 4, 1],
+          nodeType: [1, 1, 3, 1, 1, 3, 3],
+          nodeName: [it("DIV"), it("H3"), it("#text"), it("BR"), it("STRONG"), it("#text"), it("#text")],
+          nodeValue: [it(""), it(""), it("200가지 테스트를 통과한 "), it(""), it(""), it("제조사 무사고 인증차량"), it("입니다")],
+          backendNodeId: [1, 2, 3, 4, 5, 6, 7],
+          attributes: [[], [], [], [], [], [], []],
+        },
+        layout: {
+          nodeIndex: [0, 1, 2, 4, 5, 6],
+          styles: [row({ display: "block" }), row({ display: "block" }), row({}), row({ display: "inline" }), row({}), row({})],
+          bounds: [
+            [0, 0, 700, 150],
+            [0, 0, 700, 147],
+            [0, 82, 300, 34], // "200가지..." 첫 줄
+            [0, 116, 228, 28], // <strong> 둘째 줄 시작
+            [0, 116, 237, 34], // strong 내부 텍스트
+            [228, 116, 60, 34], // "입니다" strong 뒤
+          ],
+          text: [it(""), it(""), it("200가지 테스트를 통과한 "), it(""), it(""), it("입니다")],
+        },
+      },
+    ],
+  } as unknown as CaptureSnapshotResult;
+}
+const splitIR = buildIR(parseAllDocuments(inlineSplitSnap()));
+function collectTexts(n: import("@html2figma/shared").H2FNode | null, acc: import("@html2figma/shared").H2FNode[] = []) {
+  if (!n) return acc;
+  if (n.type === "text") acc.push(n);
+  const kids = (n as { children?: import("@html2figma/shared").H2FNode[] }).children;
+  if (Array.isArray(kids)) for (const c of kids) collectTexts(c, acc);
+  return acc;
+}
+const splitTexts = collectTexts(splitIR.root);
+const merged = splitTexts.find(
+  (t) => (t as { characters?: string }).characters?.includes("200가지") && (t as { characters?: string }).characters?.includes("입니다")
+);
+assert(!merged, "인라인 요소 앞뒤 텍스트가 하나로 합쳐지지 않음");
+const tail = splitTexts.find((t) => (t as { characters?: string }).characters === "입니다");
+assert(!!tail && tail.layout.x >= 200, "strong 뒤 '입니다' 가 자기 위치(x≈228)에 배치됨(x=0 겹침 아님)");
+
 console.log(failures === 0 ? "\n✅ 모든 테스트 통과" : `\n❌ ${failures}개 실패`);
 process.exit(failures === 0 ? 0 : 1);

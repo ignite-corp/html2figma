@@ -58,22 +58,20 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
     return true;
   }
 
-  function directText(node: RawNode): { text: string; bounds: RawNode["layout"] } | null {
-    const parts: string[] = [];
-    let textLayout: RawNode["layout"] | undefined;
+  // 직접 텍스트 자식들을 각자 자기 조각 bounds 위치에 개별 텍스트 노드로 만든다.
+  // 조각들을 하나로 합치면(예: <br> 로 \n 결합) 사이에 낀 인라인 요소(<strong> 등)
+  // 뒤의 텍스트가 인라인 요소 위에 겹쳐 렌더된다. 각 조각을 자기 위치에 두면 겹치지 않는다.
+  // 단일 텍스트 노드가 여러 줄로 흐른 경우는 조각이 하나뿐이라 buildText 의 폭 확장이 처리한다.
+  function buildDirectTexts(node: RawNode, ox: number, oy: number): TextNode[] {
+    const out: TextNode[] = [];
     for (const c of node.children) {
-      if (c.nodeType === 3) {
-        const v = (c.layout?.text ?? c.nodeValue).replace(/\s+/g, " ");
-        if (v.trim()) {
-          parts.push(v);
-          textLayout = textLayout ?? c.layout;
-        }
-      } else if (c.nodeType === 1 && c.nodeName === "BR") {
-        parts.push("\n");
-      }
+      if (c.nodeType !== 3) continue;
+      const text = (c.layout?.text ?? c.nodeValue).replace(/\s+/g, " ").trim();
+      if (!text) continue;
+      const t = buildText(node, text, c.layout, ox, oy);
+      if (t) out.push(t);
     }
-    if (!parts.join("").trim()) return null;
-    return { text: parts.join("").replace(/^\n+|\n+$/g, ""), bounds: textLayout };
+    return out;
   }
 
   function layoutFromRawLayout(rl: NonNullable<RawNode["layout"]>, ox: number, oy: number): Layout | null {
@@ -288,11 +286,8 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
     const bgVectors = extractBackgroundImages(node, style, layout);
     for (const v of bgVectors) children.push(v);
 
-    const dt = directText(node);
-    if (dt) {
-      const t = buildText(node, dt.text, dt.bounds, ox, oy);
-      if (t) children.push(t);
-    }
+    const dt = buildDirectTexts(node, ox, oy);
+    for (const t of dt) children.push(t);
 
     const it = buildInputText(node, ox, oy);
     if (it) children.push(it);
