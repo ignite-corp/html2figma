@@ -280,7 +280,14 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
     const rl = node.layout;
     // 오버플로 클리핑: 조상이 overflow hidden/clip/scroll/auto 로 잘라내는 영역 밖이면 서브트리 제거.
     // (예: height:0; overflow:hidden 로 접힌 드롭다운/아코디언은 브라우저에서 안 보인다)
-    if (rl && isOutsideClip(edgesOf(rl, ox, oy), clip)) return [];
+    // 단, 자기 박스가 0크기(예: position:absolute 자식만 감싸 접힌 인라인 <a>/<span>)면
+    // 이 노드 자체는 그리는 게 없고, 절대배치된 자손은 부모 박스와 무관하게 다른 위치에
+    // 보일 수 있으므로 서브트리를 통째로 버리지 않는다. 자손은 각자 자기 박스로 클립 판정된다.
+    if (rl) {
+      const [, , bw, bh] = rl.bounds;
+      const hasArea = bw > 0 && bh > 0;
+      if (hasArea && isOutsideClip(edgesOf(rl, ox, oy), clip)) return [];
+    }
 
     // 이 요소가 오버플로를 자르면 자손 클립 영역을 자신의 박스로 좁힌다.
     let childClip = clip;

@@ -702,5 +702,52 @@ assert(
   "상대 경로 래스터 <img> src 가 페이지 기준 절대 URL 로 해석됨"
 );
 
+/* ---------------- 0×0 인라인 래퍼로 감싼 절대배치 이미지 클립 케이스 ---------------- */
+// overflow:hidden 카드(DIV) 안에서 <a> 가 position:absolute 이미지만 감싸 0×0 로 접히면,
+// 접힌 <a> 박스가 클립 좌상단 모서리에 걸려(box.right<=clip.left) 서브트리가 통째로
+// 잘려나가 이미지가 사라지는 회귀(기아 CPO 추천차량 카드). 이미지는 살아남아야 한다.
+console.log("\n0×0 인라인 래퍼 안 절대배치 이미지:");
+const absImgSnap: CaptureSnapshotResult = {
+  strings,
+  documents: [
+    {
+      documentURL: intern("https://cpo.kia.com/"),
+      title: intern("abs"),
+      nodes: {
+        parentIndex: [-1, 0, 1],
+        nodeType: [1, 1, 1],
+        nodeName: [intern("DIV"), intern("A"), intern("IMG")],
+        nodeValue: [intern(""), intern(""), intern("")],
+        backendNodeId: [1, 2, 3],
+        attributes: [
+          [],
+          [],
+          [intern("src"), intern("https://cpo-cdn.kia.com/public/model/CAR.png")],
+        ],
+      },
+      layout: {
+        nodeIndex: [0, 1, 2],
+        styles: [
+          styleRow({ display: "block", overflow: "hidden", "overflow-x": "hidden", "overflow-y": "hidden" }),
+          styleRow({ display: "inline" }),
+          styleRow({ display: "block", position: "absolute" }),
+        ],
+        bounds: [
+          [0, 0, 364, 230], // 클립 카드
+          [0, 0, 0, 0], // 접힌 인라인 <a> (좌상단 0×0)
+          [0, 12, 364, 205], // 절대배치 이미지 (카드 안)
+        ],
+        text: [intern(""), intern(""), intern("")],
+      },
+    },
+  ],
+} as unknown as CaptureSnapshotResult;
+
+const absImgIR = buildIR(parseAllDocuments(absImgSnap));
+assert(
+  absImgIR.imageUrls.has("https://cpo-cdn.kia.com/public/model/CAR.png"),
+  "0×0 인라인 <a> 로 감싼 절대배치 이미지가 오버플로 클립 안에서 유지됨"
+);
+
 console.log(failures === 0 ? "\n✅ 모든 테스트 통과" : `\n❌ ${failures}개 실패`);
 process.exit(failures === 0 ? 0 : 1);
