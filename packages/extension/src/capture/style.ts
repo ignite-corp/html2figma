@@ -273,16 +273,24 @@ export function mapTextStyle(s: ComputedStyleMap): TextStyle {
 
 function figmaFontStyle(weight: number, italic: boolean): string {
   const name =
-    weight >= 800
+    weight >= 900
+      ? "Black"
+      : weight >= 800
+      ? "Extra Bold"
+      : weight >= 700
       ? "Bold"
       : weight >= 600
-      ? "SemiBold"
+      ? "Semi Bold"
       : weight >= 500
       ? "Medium"
-      : weight <= 300
+      : weight >= 400
+      ? "Regular"
+      : weight >= 300
       ? "Light"
-      : "Regular";
-  return italic ? `${name} Italic`.replace("Regular Italic", "Italic") : name;
+      : weight >= 200
+      ? "Extra Light"
+      : "Thin";
+  return italic ? (name === "Regular" ? "Italic" : `${name} Italic`) : name;
 }
 
 function mapTextAlign(v: string | undefined): TextStyle["textAlign"] {

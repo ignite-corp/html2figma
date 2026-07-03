@@ -79,8 +79,8 @@ export class Renderer {
 
     const candidates: FontName[] = [
       { family, style },
+      { family: "Inter", style },
       { family, style: "Regular" },
-      { family: "Inter", style: style },
       { family: "Inter", style: "Regular" },
     ];
     for (const font of candidates) {
