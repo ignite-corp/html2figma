@@ -83,9 +83,29 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
   }
 
   function buildText(parent: RawNode, text: string, tl: RawNode["layout"], ox: number, oy: number): TextNode | null {
-    const layout = tl ? layoutFromRawLayout(tl, ox, oy) : layoutOf(parent, ox, oy);
-    if (!layout) return null;
+    const frag = tl ? layoutFromRawLayout(tl, ox, oy) : null;
+    const box = layoutOf(parent, ox, oy);
+    const base = frag ?? box;
+    if (!base) return null;
     const styleSource = parent.layout?.styles ?? {};
+    // 줄바꿈 폭은 부모 요소의 콘텐츠 박스 폭을 쓴다(브라우저가 실제로 텍스트를 흘린 폭).
+    // 텍스트 조각 bounds 만 쓰면 첫 줄 조각 폭(예: 48px)으로 좁아져, 여러 줄 텍스트가
+    // 한두 글자씩 세로로 줄바꿈되며 깨진다. 위치(x/y)는 조각 기준을 유지해
+    // 단일 줄·가운데 정렬 텍스트에는 영향이 없다.
+    let width = base.width;
+    if (box) {
+      const padR = parsePx(styleSource["padding-right"]);
+      // 텍스트 시작 x 에서 부모 콘텐츠 박스 오른쪽 끝까지의 가용 폭.
+      const avail = box.x + box.width - padR - base.x;
+      if (avail > width) width = avail;
+    }
+    const layout: Layout = {
+      x: base.x,
+      y: base.y,
+      width: Math.max(1, width),
+      height: base.height,
+      order: base.order,
+    };
     return {
       id: nextId(),
       name: text.slice(0, 24) || "text",

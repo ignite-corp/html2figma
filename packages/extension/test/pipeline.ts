@@ -326,12 +326,12 @@ const snapshot4: CaptureSnapshotResult = {
 } as unknown as CaptureSnapshotResult;
 
 const built4 = buildIR(parseAllDocuments(snapshot4));
-const findText = (n: import("@html2figma/shared").H2FNode): import("@html2figma/shared").H2FNode | null => {
+const findTextNode = (n: import("@html2figma/shared").H2FNode): import("@html2figma/shared").H2FNode | null => {
   if (n.type === "text") return n;
-  if (n.type === "frame") for (const c of n.children) { const r = findText(c); if (r) return r; }
+  if (n.type === "frame") for (const c of n.children) { const r = findTextNode(c); if (r) return r; }
   return null;
 };
-const phText = built4.root ? findText(built4.root) : null;
+const phText = built4.root ? findTextNode(built4.root) : null;
 assert(
   !!phText && phText.type === "text" && phText.characters === "무엇이 궁금하신가요?",
   "input placeholder 가 텍스트 노드로 합성됨"
@@ -536,6 +536,62 @@ assert(!!hostFrame && hostFrame.type === "frame", "data-h2f-el 요소가 hostFra
 assert(
   !!hostFrame && hostFrame.layout.width === 100 && hostFrame.layout.height === 40,
   "hostFrames 가 올바른(호스트) 프레임을 가리킴"
+);
+
+/* ---------------- 여러 줄 텍스트 줄바꿈 폭(세로로 깨짐 방지) ---------------- */
+console.log("\n텍스트 줄바꿈 폭:");
+function textWrapSnap(): CaptureSnapshotResult {
+  const s: string[] = [""];
+  const it = (v: string) => {
+    const i = s.indexOf(v);
+    if (i >= 0) return i;
+    s.push(v);
+    return s.length - 1;
+  };
+  const row = (m: Record<string, string>) => COMPUTED_STYLES.map((n) => it(m[n] ?? ""));
+  return {
+    strings: s,
+    documents: [
+      {
+        documentURL: it("https://example.com"),
+        title: it("wrap"),
+        nodes: {
+          parentIndex: [-1, 0, 1],
+          nodeType: [1, 1, 3],
+          nodeName: [it("DIV"), it("H2"), it("#text")],
+          nodeValue: [it(""), it(""), it("긴 제목 텍스트 여러 줄")],
+          backendNodeId: [1, 2, 3],
+          attributes: [[], [], []],
+        },
+        layout: {
+          nodeIndex: [0, 1, 2],
+          styles: [row({ display: "block" }), row({ display: "block" }), row({})],
+          bounds: [
+            [0, 0, 300, 200],
+            [0, 0, 288, 84], // h2 박스: 288 폭, 3줄(84 높이)
+            [0, 2, 48, 364], // 텍스트 조각 bounds: 첫 줄 조각처럼 좁게(48) 잡힘
+          ],
+          text: [it(""), it(""), it("긴 제목 텍스트 여러 줄")],
+        },
+      },
+    ],
+  } as unknown as CaptureSnapshotResult;
+}
+const wrapIR = buildIR(parseAllDocuments(textWrapSnap()));
+function findTextDeep(n: import("@html2figma/shared").H2FNode | null): import("@html2figma/shared").H2FNode | null {
+  if (!n) return null;
+  if (n.type === "text") return n;
+  const kids = (n as { children?: import("@html2figma/shared").H2FNode[] }).children;
+  if (Array.isArray(kids)) for (const c of kids) {
+    const f = findTextDeep(c);
+    if (f) return f;
+  }
+  return null;
+}
+const wrapText = findTextDeep(wrapIR.root);
+assert(
+  !!wrapText && wrapText.type === "text" && wrapText.layout.width === 288,
+  "여러 줄 텍스트 폭이 부모 h2 콘텐츠 폭(288)으로 확장됨(조각 폭 48 아님)"
 );
 
 console.log(failures === 0 ? "\n✅ 모든 테스트 통과" : `\n❌ ${failures}개 실패`);
