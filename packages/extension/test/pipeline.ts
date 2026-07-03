@@ -488,5 +488,55 @@ assert(
   "overflow:visible 면 접힌 컨테이너의 내용이 유지됨(회귀 방지)"
 );
 
+/* ---------------- 의사요소 아이콘을 호스트 프레임에 매핑 ---------------- */
+console.log("\n의사요소 호스트 매핑:");
+function hostSnap(): CaptureSnapshotResult {
+  const s: string[] = [""];
+  const it = (v: string) => {
+    const i = s.indexOf(v);
+    if (i >= 0) return i;
+    s.push(v);
+    return s.length - 1;
+  };
+  const row = (m: Record<string, string>) => COMPUTED_STYLES.map((n) => it(m[n] ?? ""));
+  return {
+    strings: s,
+    documents: [
+      {
+        documentURL: it("https://example.com"),
+        title: it("host"),
+        nodes: {
+          parentIndex: [-1, 0],
+          nodeType: [1, 1],
+          nodeName: [it("DIV"), it("BUTTON")],
+          nodeValue: [it(""), it("")],
+          backendNodeId: [1, 2],
+          // 두 번째 노드(button)에 data-h2f-el="7" 부여
+          attributes: [[], [it("data-h2f-el"), it("7")]],
+        },
+        layout: {
+          nodeIndex: [0, 1],
+          styles: [
+            row({ display: "block", "background-color": "rgb(255,255,255)" }),
+            row({ display: "block", "background-color": "rgb(0,0,0)" }),
+          ],
+          bounds: [
+            [0, 0, 300, 200],
+            [10, 10, 100, 40],
+          ],
+          text: [it(""), it("")],
+        },
+      },
+    ],
+  } as unknown as CaptureSnapshotResult;
+}
+const hostIR = buildIR(parseAllDocuments(hostSnap()));
+const hostFrame = hostIR.hostFrames.get("7");
+assert(!!hostFrame && hostFrame.type === "frame", "data-h2f-el 요소가 hostFrames 에 등록됨");
+assert(
+  !!hostFrame && hostFrame.layout.width === 100 && hostFrame.layout.height === 40,
+  "hostFrames 가 올바른(호스트) 프레임을 가리킴"
+);
+
 console.log(failures === 0 ? "\n✅ 모든 테스트 통과" : `\n❌ ${failures}개 실패`);
 process.exit(failures === 0 ? 0 : 1);

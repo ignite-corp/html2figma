@@ -31,12 +31,15 @@ export interface BuildResult {
   imageUrls: Set<string>;
   svgRequests: SvgRequest[];
   svgUrlRequests: SvgUrlRequest[];
+  /** data-h2f-el 속성값 → 해당 요소의 프레임 노드. 의사요소 아이콘을 호스트 안에 넣기 위함. */
+  hostFrames: Map<string, FrameNode>;
 }
 
 export function buildIR(snapshot: ParsedSnapshot): BuildResult {
   const imageUrls = new Set<string>();
   const svgRequests: SvgRequest[] = [];
   const svgUrlRequests: SvgUrlRequest[] = [];
+  const hostFrames = new Map<string, FrameNode>();
   const docs = snapshot.documents;
   let idCounter = 0;
   const nextId = () => `n${idCounter++}`;
@@ -306,6 +309,8 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
       style,
       children: sortByOrder(children),
     };
+    const hostId = node.attributes?.["data-h2f-el"];
+    if (hostId) hostFrames.set(hostId, frame);
     return [frame];
   }
 
@@ -343,7 +348,7 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
     };
   }
 
-  return { root, imageUrls, svgRequests, svgUrlRequests };
+  return { root, imageUrls, svgRequests, svgUrlRequests, hostFrames };
 }
 
 /** url 이 SVG 인지(확장자 또는 data:image/svg+xml) */

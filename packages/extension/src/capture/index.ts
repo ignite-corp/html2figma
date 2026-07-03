@@ -60,6 +60,7 @@ interface PseudoIcon {
   w: number;
   h: number;
   svg: boolean;
+  hostId?: string;
 }
 
 /**
@@ -80,6 +81,26 @@ function maxWidthOf(node: H2FNode): number {
 }
 
 /**
+ * 스냅샷 전에 모든 요소에 data-h2f-el 식별자를 부여한다.
+ * 이후 의사요소 아이콘을 그 호스트 프레임 안에 정확히 넣기 위한 매칭 키로 쓰인다.
+ */
+async function tagElements(session: CdpSession): Promise<void> {
+  const tagger = function () {
+    const els = document.querySelectorAll("*");
+    for (let i = 0; i < els.length; i++) {
+      els[i].setAttribute("data-h2f-el", String(i));
+    }
+  };
+  try {
+    await session.send("Runtime.evaluate", {
+      expression: `(${tagger.toString()})()`,
+    });
+  } catch {
+    /* 태깅 실패 시 아이콘은 루트에 얹힌다(폴백) */
+  }
+}
+
+/**
  * ::before/::after 의사요소의 background-image(또는 content url)를 수집.
  * DOMSnapshot 은 의사요소를 포함하지 않아 아이콘이 유실되므로 페이지에서 직접 측정한다.
  * 좌표는 document 기준 CSS px (스냅샷 정규화 좌표와 동일 단위).
@@ -93,6 +114,7 @@ async function collectPseudoIcons(session: CdpSession): Promise<PseudoIcon[]> {
       w: number;
       h: number;
       svg: boolean;
+      hostId?: string;
     }[] = [];
     const els = document.querySelectorAll("*");
     const MAX = 400;
@@ -169,7 +191,8 @@ async function collectPseudoIcons(session: CdpSession): Promise<PseudoIcon[]> {
           }
         }
         const svg = /^data:image\/svg\+xml/i.test(url) || /\.svg(\?|$)/i.test(url);
-        out.push({ url, x, y, w, h, svg });
+        const hostId = (el as HTMLElement).getAttribute("data-h2f-el") || undefined;
+        out.push({ url, x, y, w, h, svg, hostId });
       }
     }
     return JSON.stringify(out);
@@ -211,19 +234,23 @@ async function applyPseudoIcons(
   icons: PseudoIcon[],
   root: H2FNode,
   imageUrls: Set<string>,
-  assetsOut: AssetMap
+  assetsOut: AssetMap,
+  hostFrames: Map<string, FrameNode>
 ): Promise<void> {
   if (root.type !== "frame") return;
-  const frame = root as FrameNode;
+  const rootFrame = root as FrameNode;
   let n = 0;
   for (const p of icons) {
     const layout = { x: p.x, y: p.y, width: p.w, height: p.h };
+    // 아이콘을 호스트 요소의 프레임 안에 넣는다(예: 버튼의 화살표). 좌표는 절대값이며
+    // 렌더 시 부모 기준으로 상대화되므로 부모만 바꿔 넣으면 된다. 호스트가 없으면 루트에 얹는다.
+    const target = (p.hostId && hostFrames.get(p.hostId)) || rootFrame;
     if (p.svg) {
       const markup = await fetchSvgMarkup(p.url);
       if (!markup) continue;
       const assetId = `pseudo-svg:${n}`;
       assetsOut[assetId] = { kind: "svg", markup };
-      frame.children.push({
+      target.children.push({
         id: `pseudo${n}`,
         name: "icon",
         type: "vector",
@@ -233,7 +260,7 @@ async function applyPseudoIcons(
       });
     } else {
       imageUrls.add(p.url);
-      frame.children.push({
+      target.children.push({
         id: `pseudo${n}`,
         name: "icon",
         type: "image",
@@ -317,6 +344,8 @@ export async function capturePage(
     }
 
     onProgress?.("페이지 캡처", 0.3);
+    // 의사요소 아이콘을 호스트 프레임 안에 넣기 위해, 스냅샷 전에 각 요소에 식별자를 부여한다.
+    await tagElements(session);
     const snapshot = await session.send<CaptureSnapshotResult>(
       "DOMSnapshot.captureSnapshot",
       {
@@ -330,7 +359,7 @@ export async function capturePage(
     const parsed = parseAllDocuments(snapshot, scale);
     if (!parsed.documents[0]?.root) throw new Error("캡처된 노드가 없습니다.");
 
-    const { root, imageUrls, svgRequests, svgUrlRequests } = buildIR(parsed);
+    const { root, imageUrls, svgRequests, svgUrlRequests, hostFrames } = buildIR(parsed);
     if (!root) throw new Error("변환할 노드가 없습니다.");
 
     // 루트 프레임 폭을 "실제 레이아웃 폭"에 맞춘다.
@@ -355,7 +384,7 @@ export async function capturePage(
     onProgress?.("아이콘 수집", 0.55);
     const pseudoIcons = await collectPseudoIcons(session);
     const pseudoSvgAssets: AssetMap = {};
-    await applyPseudoIcons(pseudoIcons, root, imageUrls, pseudoSvgAssets);
+    await applyPseudoIcons(pseudoIcons, root, imageUrls, pseudoSvgAssets, hostFrames);
 
     onProgress?.("이미지 수집", 0.6);
     const assets = await collectImageAssets(imageUrls, (done, total) => {
