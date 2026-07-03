@@ -81,6 +81,35 @@ function maxWidthOf(node: H2FNode): number {
 }
 
 /**
+ * 프레임 폭을 자식들을 담을 수 있도록 넓힌다(bottom-up).
+ * body 나 wrapper 처럼 자기보다 넓은 자손(min-width 고정 레이아웃 등)을 가진 컨테이너가
+ * 실제로는 배경이 전체 폭을 덮는데도 좁게(뷰포트-스크롤바) 잡히는 문제를 바로잡는다.
+ * 좌표는 절대값. maxRight(대개 루트 우측)로 상한을 두어 가로 bleed 로 폭주하지 않게 한다.
+ * overflow 를 자르는 프레임(clipsContent)은 의도적으로 자식을 가두므로 확장하지 않는다.
+ */
+function expandToFitChildren(node: H2FNode, maxRight: number): void {
+  if (node.type !== "frame") return;
+  const frame = node as FrameNode;
+  for (const c of frame.children) expandToFitChildren(c, maxRight);
+  if (frame.style.clipsContent) return;
+  let childRight = -Infinity;
+  for (const c of frame.children) {
+    if (!c.layout) continue;
+    // 프레임과 비슷하거나 더 넓은 "블록형" 자식만 확장 기준으로 삼는다.
+    // (작은 절대배치 오버레이·툴팁·드롭다운이 프레임을 부풀리는 것을 방지)
+    if (c.layout.width < frame.layout.width * 0.9) continue;
+    const r = c.layout.x + c.layout.width;
+    if (r > childRight) childRight = r;
+  }
+  if (childRight === -Infinity) return;
+  const desired = childRight - frame.layout.x;
+  const capped = Math.min(Math.max(frame.layout.width, desired), maxRight - frame.layout.x);
+  if (capped > frame.layout.width) {
+    frame.layout = { ...frame.layout, width: capped };
+  }
+}
+
+/**
  * 스냅샷 전에 모든 요소에 data-h2f-el 식별자를 부여한다.
  * 이후 의사요소 아이콘을 그 호스트 프레임 안에 정확히 넣기 위한 매칭 키로 쓰인다.
  */
@@ -378,6 +407,8 @@ export async function capturePage(
         width: Math.max(root.layout.width, vp.width, layoutWidth),
         height: Math.max(root.layout.height, fullHeight),
       };
+      // body/wrapper 등 자기보다 넓은 자손을 가진 컨테이너를 루트 폭까지 넓혀 정렬을 맞춘다.
+      expandToFitChildren(root, root.layout.x + root.layout.width);
     }
 
     // DOMSnapshot 에 없는 ::before/::after 아이콘을 페이지에서 수집해 root 에 얹는다.
