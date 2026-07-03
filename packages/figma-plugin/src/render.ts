@@ -60,27 +60,70 @@ export class Renderer {
   /* ---------------- 폰트 사전 로드 ---------------- */
 
   private async preloadFonts(node: H2FNode): Promise<void> {
-    const needed = new Set<string>();
+    const needed = new Map<string, IRText["text"]>();
     const collect = (n: H2FNode) => {
-      if (n.type === "text") needed.add(`${n.text.fontFamily}__${n.text.fontStyle}`);
+      if (n.type === "text") needed.set(`${n.text.fontFamily}__${n.text.fontStyle}`, n.text);
       if (n.type === "frame") n.children.forEach(collect);
     };
     collect(node);
-    for (const key of needed) {
-      const [family, style] = key.split("__");
-      await this.loadFont(family, style);
+    for (const ts of needed.values()) {
+      await this.loadFont(ts.fontFamily, ts.fontStyle, ts.fontWeight);
     }
   }
 
-  private async loadFont(family: string, style: string): Promise<FontName> {
+  private availFonts: Map<string, FontName[]> | null = null;
+
+  /** Figma 에서 실제 사용 가능한 폰트 목록을 한 번만 조회해 family → 스타일 목록으로 캐시 */
+  private async ensureAvailFonts(): Promise<Map<string, FontName[]>> {
+    if (this.availFonts) return this.availFonts;
+    const map = new Map<string, FontName[]>();
+    try {
+      const list = await figma.listAvailableFontsAsync();
+      for (const f of list) {
+        const arr = map.get(f.fontName.family) ?? [];
+        arr.push(f.fontName);
+        map.set(f.fontName.family, arr);
+      }
+    } catch {
+      /* 목록 조회 실패 시 빈 맵 */
+    }
+    this.availFonts = map;
+    return map;
+  }
+
+  private async loadFont(family: string, style: string, weight?: number): Promise<FontName> {
     const key = `${family}__${style}`;
     const cached = this.fontCache.get(key);
     if (cached) return cached;
 
+    const avail = await this.ensureAvailFonts();
+    const italic = /italic|oblique/i.test(style);
+    const desired = weight ?? weightOfStyleName(style);
+
+    // 가족 우선순위: 원본 가족 → Inter. 각 가족 안에서는 "실제 존재하는 스타일 중
+    // 같은 이탤릭 여부이면서 무게가 가장 가까운" 스타일을 고른다. 이렇게 하면 원본
+    // 폰트가 600(SemiBold)을 정확히 갖지 않아도 Bold/Medium 등 가까운 두께로 매칭돼
+    // 400(Regular)으로 떨어지지 않는다(특히 스타일명 표기가 다른 CJK 폰트).
+    for (const fam of [family, "Inter"]) {
+      const styles = avail.get(fam);
+      if (styles && styles.length) {
+        const best = pickClosestStyle(styles, desired, italic);
+        if (best) {
+          try {
+            await figma.loadFontAsync(best);
+            this.fontCache.set(key, best);
+            return best;
+          } catch {
+            /* 다음 가족 */
+          }
+        }
+      }
+    }
+
+    // 목록 조회 실패 등으로 매칭 실패 시 직접 시도.
     const candidates: FontName[] = [
       { family, style },
       { family: "Inter", style },
-      { family, style: "Regular" },
       { family: "Inter", style: "Regular" },
     ];
     for (const font of candidates) {
@@ -218,7 +261,7 @@ export class Renderer {
 
   private async buildText(node: IRText, parentX: number, parentY: number): Promise<TextNode> {
     const text = figma.createText();
-    const font = await this.loadFont(node.text.fontFamily, node.text.fontStyle);
+    const font = await this.loadFont(node.text.fontFamily, node.text.fontStyle, node.text.fontWeight);
     text.fontName = font;
     text.characters = node.characters;
     text.fontSize = node.text.fontSize;
@@ -387,6 +430,41 @@ export class Renderer {
 }
 
 /* ---------------- 헬퍼 ---------------- */
+
+/** Figma 스타일명("Semi Bold", "Extra Light" 등)을 CSS font-weight 숫자로 변환 */
+function weightOfStyleName(style: string): number {
+  const s = style.toLowerCase().replace(/[\s_-]+/g, "");
+  if (s.includes("thin")) return 100;
+  if (s.includes("extralight") || s.includes("ultralight")) return 200;
+  if (s.includes("semibold") || s.includes("demibold") || s.includes("demi")) return 600;
+  if (s.includes("extrabold") || s.includes("ultrabold")) return 800;
+  if (s.includes("black") || s.includes("heavy")) return 900;
+  if (s.includes("medium")) return 500;
+  if (s.includes("light")) return 300;
+  if (s.includes("bold")) return 700;
+  return 400;
+}
+
+/** 가족 내 실제 스타일 중 이탤릭 여부가 같고 무게가 가장 가까운 스타일 선택(동률이면 더 두꺼운 쪽) */
+function pickClosestStyle(styles: FontName[], desired: number, italic: boolean): FontName | null {
+  const match = (want: boolean) =>
+    styles.filter((f) => /italic|oblique/i.test(f.style) === want);
+  let pool = match(italic);
+  if (pool.length === 0) pool = styles;
+  let best: FontName | null = null;
+  let bestScore = Infinity;
+  let bestWeight = -1;
+  for (const f of pool) {
+    const w = weightOfStyleName(f.style);
+    const d = Math.abs(w - desired);
+    if (d < bestScore || (d === bestScore && w > bestWeight)) {
+      best = f;
+      bestScore = d;
+      bestWeight = w;
+    }
+  }
+  return best;
+}
 
 function solid(color: RGBA): SolidPaint {
   return { type: "SOLID", color: { r: color.r, g: color.g, b: color.b }, opacity: color.a };
