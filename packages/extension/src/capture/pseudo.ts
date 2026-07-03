@@ -56,8 +56,32 @@ export async function collectPseudoIcons(session: CdpSession): Promise<PseudoIco
     }[] = [];
     const els = document.querySelectorAll("*");
     const MAX = 400;
+    // 호스트가 overflow hidden/clip/scroll 조상에 의해 잘려 실제로는 안 보이는지 판정한다.
+    // (예: max-height:0; overflow:hidden 으로 접힌 아코디언 안의 항목) 빌더는 이런 요소를
+    // 클립으로 제거하지만, 의사요소는 페이지에서 클립과 무관하게 수집되므로 여기서 걸러야
+    // 유령 아이콘(접힌 트림 목록의 체크 아이콘 등)이 루트에 얹히는 것을 막을 수 있다.
+    const isClippedAway = function (el: Element): boolean {
+      const box = el.getBoundingClientRect();
+      let node = el.parentElement;
+      while (node) {
+        const cs = getComputedStyle(node);
+        if (cs.display === "none" || cs.visibility === "hidden") return true;
+        const clip = /hidden|clip|scroll|auto/;
+        const cx = clip.test(cs.overflowX || cs.overflow);
+        const cy = clip.test(cs.overflowY || cs.overflow);
+        if (cx || cy) {
+          const nr = node.getBoundingClientRect();
+          if ((cx && nr.width <= 0) || (cy && nr.height <= 0)) return true;
+          if (cy && (box.bottom <= nr.top || box.top >= nr.bottom)) return true;
+          if (cx && (box.right <= nr.left || box.left >= nr.right)) return true;
+        }
+        node = node.parentElement;
+      }
+      return false;
+    };
     for (let i = 0; i < els.length && out.length < MAX; i++) {
       const el = els[i] as Element;
+      if (isClippedAway(el)) continue;
       for (const p of ["::before", "::after"]) {
         const cs = getComputedStyle(el, p);
         if (!cs || cs.display === "none") continue;
