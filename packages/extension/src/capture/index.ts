@@ -1,6 +1,7 @@
 import {
   H2F_VERSION,
   getViewport,
+  parseCssColor,
   type AssetMap,
   type H2FDocument,
   type Theme,
@@ -54,13 +55,17 @@ async function measurePage(
 }
 
 interface PseudoIcon {
-  url: string;
+  url?: string;
   x: number;
   y: number;
   w: number;
   h: number;
   svg: boolean;
   hostId?: string;
+  /** 아이콘이 아닌 단색 박스(밑줄·구분선 등)의 배경색 CSS 문자열 */
+  bg?: string;
+  /** border-radius (px) */
+  radius?: number;
 }
 
 /**
@@ -137,13 +142,15 @@ async function tagElements(session: CdpSession): Promise<void> {
 async function collectPseudoIcons(session: CdpSession): Promise<PseudoIcon[]> {
   const collector = function () {
     const out: {
-      url: string;
+      url?: string;
       x: number;
       y: number;
       w: number;
       h: number;
       svg: boolean;
       hostId?: string;
+      bg?: string;
+      radius?: number;
     }[] = [];
     const els = document.querySelectorAll("*");
     const MAX = 400;
@@ -160,15 +167,36 @@ async function collectPseudoIcons(session: CdpSession): Promise<PseudoIcon[]> {
           const cm = cs.content.match(/url\(["']?([^"')]+)["']?\)/);
           if (cm) url = cm[1];
         }
-        if (!url) continue;
+        // 아이콘(background-image/content url)이 없으면 눈에 보이는 단색 배경
+        // (밑줄·구분선 등)인지 확인한다. 배경도 없으면(clearfix 등) 건너뛴다.
+        let solidBg: string | null = null;
+        let radius = 0;
+        if (!url) {
+          const bc = cs.backgroundColor;
+          const am = bc && bc.match(/rgba?\(([^)]+)\)/);
+          let alpha = 1;
+          if (am) {
+            const parts = am[1].split(",").map((s) => parseFloat(s));
+            if (parts.length >= 4) alpha = parts[3];
+          }
+          const visible = !!bc && bc !== "transparent" && alpha > 0;
+          if (!visible) continue;
+          solidBg = bc;
+          radius = parseFloat(cs.borderTopLeftRadius) || 0;
+        }
         const rect = el.getBoundingClientRect();
         if (!rect || rect.width === 0 || rect.height === 0) continue;
         let w = parseFloat(cs.width);
         let h = parseFloat(cs.height);
         if (!(w > 0)) w = rect.width;
         if (!(h > 0)) h = rect.height;
-        // 아이콘 용도만 대상 (거대한 장식 배경 오버레이 제외)
-        if (w > 600 || h > 600) continue;
+        // 아이콘은 거대한 장식 배경 오버레이 제외. 단색 박스(밑줄)는 얇고 넓을 수
+        // 있으므로 면적이 아주 큰 전면 오버레이만 제외한다.
+        if (url) {
+          if (w > 600 || h > 600) continue;
+        } else {
+          if (w * h > 600 * 600) continue;
+        }
         const sx = window.scrollX || 0;
         const sy = window.scrollY || 0;
         // ::before/::after 는 대개 position:absolute 로 특정 위치(오른쪽 화살표 등)에 놓인다.
@@ -219,9 +247,19 @@ async function collectPseudoIcons(session: CdpSession): Promise<PseudoIcon[]> {
             }
           }
         }
-        const svg = /^data:image\/svg\+xml/i.test(url) || /\.svg(\?|$)/i.test(url);
+        const svg = !!url && (/^data:image\/svg\+xml/i.test(url) || /\.svg(\?|$)/i.test(url));
         const hostId = (el as HTMLElement).getAttribute("data-h2f-el") || undefined;
-        out.push({ url, x, y, w, h, svg, hostId });
+        out.push({
+          url: url || undefined,
+          x,
+          y,
+          w,
+          h,
+          svg,
+          hostId,
+          bg: solidBg || undefined,
+          radius: radius || undefined,
+        });
       }
     }
     return JSON.stringify(out);
@@ -274,7 +312,23 @@ async function applyPseudoIcons(
     // 아이콘을 호스트 요소의 프레임 안에 넣는다(예: 버튼의 화살표). 좌표는 절대값이며
     // 렌더 시 부모 기준으로 상대화되므로 부모만 바꿔 넣으면 된다. 호스트가 없으면 루트에 얹는다.
     const target = (p.hostId && hostFrames.get(p.hostId)) || rootFrame;
-    if (p.svg) {
+    if (!p.url && p.bg) {
+      // 아이콘이 아닌 단색 박스(밑줄·구분선 등). 프레임에 solid fill 로 렌더한다.
+      const color = parseCssColor(p.bg);
+      if (!color || color.a === 0) continue;
+      const style: H2FNode["style"] = { fills: [{ type: "solid", color }] };
+      if (p.radius) {
+        style.cornerRadius = { tl: p.radius, tr: p.radius, br: p.radius, bl: p.radius };
+      }
+      target.children.push({
+        id: `pseudo${n}`,
+        name: "line",
+        type: "frame",
+        layout,
+        style,
+        children: [],
+      });
+    } else if (p.svg && p.url) {
       const markup = await fetchSvgMarkup(p.url);
       if (!markup) continue;
       const assetId = `pseudo-svg:${n}`;
@@ -287,7 +341,7 @@ async function applyPseudoIcons(
         style: {},
         assetId,
       });
-    } else {
+    } else if (p.url) {
       imageUrls.add(p.url);
       target.children.push({
         id: `pseudo${n}`,

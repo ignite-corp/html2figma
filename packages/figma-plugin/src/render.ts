@@ -294,6 +294,13 @@ export class Renderer {
     }
 
     this.position(text, node, parentX, parentY);
+    // 단일 줄 텍스트는 캡처된 박스의 세로 중심에 라인 박스를 맞춘다.
+    // (line-height 가 큰 인라인 텍스트가 아래로 밀리거나, input placeholder 가
+    //  세로 중앙이 아닌 상단에 붙는 이중 정렬 문제를 방지)
+    if (singleLine && node.layout.height > 0) {
+      const boxCenterY = node.layout.y - parentY + node.layout.height / 2;
+      text.y = boxCenterY - text.height / 2;
+    }
     return text;
   }
 
