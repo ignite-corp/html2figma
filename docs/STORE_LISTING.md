@@ -259,12 +259,12 @@ https://github.com/ignite-corp/html2figma/blob/main/docs/PRIVACY.md
 ### 스크린샷 캡션 제안 (1280×800 5장)
 1. `클릭 한 번으로 현재 웹페이지를 캡처` — 제작됨: `docs/store-assets/screenshot-1.png`
 2. `Figma로 바로 전송 / 파일·클립보드로 저장` — 제작됨: `docs/store-assets/screenshot-2.png`
-3. `Figma에서 편집 가능한 프레임·텍스트·벡터로 재구성`
+3. `Figma 플러그인이 받아서 바로 렌더` — 제작됨: `docs/store-assets/screenshot-3.png`
 4. `Auto Layout + Local styles 자동 생성`
 5. `6자리 코드로 Figma에 바로 전송 (선택)`
 
-> 제작 스크립트: `docs/store-assets/generate.py` (Pillow, AppleSDGothicNeo). 팝업 캡처 이미지 경로만
-> 바꿔 재생성 가능. 3~5번은 실제 웹페이지↔Figma 결과 비교 화면을 추가하면 전환율에 좋습니다.
+> 제작 스크립트: `docs/store-assets/generate.py`, `generate-3.py` (Pillow, AppleSDGothicNeo). 팝업 캡처
+> 이미지 경로만 바꿔 재생성 가능. 4~5번은 실제 웹페이지↔Figma 결과 비교 화면을 추가하면 전환율에 좋습니다.
 
 ---
 
