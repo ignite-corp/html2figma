@@ -252,18 +252,19 @@ https://github.com/ignite-corp/html2figma/blob/main/docs/PRIVACY.md
 |---|---|---|
 | 스토어 아이콘 | 128×128 PNG | 준비됨 (`packages/extension/icons/icon-128.png`) — 인디고 그라디언트 `</>` 마크 |
 | 아이콘 마스터 | 512×512 PNG | 준비됨 (`packages/extension/icons/icon-512.png`) — 프로모 타일 제작용 |
-| 스크린샷 | 1280×800 또는 640×400 PNG/JPG, 최소 1장(최대 5장) | **직접 캡처 필요** |
+| 스크린샷 | 1280×800 또는 640×400 PNG/JPG, 최소 1장(최대 5장) | 준비됨 (`docs/store-assets/screenshot-1.png`, `screenshot-2.png`, 1280×800) |
 | 소형 프로모 타일 | 440×280 PNG | 선택 |
 | 마키(Marquee) | 1400×560 PNG | 선택 |
 
 ### 스크린샷 캡션 제안 (1280×800 5장)
-1. `클릭 한 번으로 현재 웹페이지를 캡처`
-2. `Figma에서 편집 가능한 프레임·텍스트·벡터로 재구성`
-3. `이미지·그라디언트·그림자·라운드까지 그대로`
+1. `클릭 한 번으로 현재 웹페이지를 캡처` — 제작됨: `docs/store-assets/screenshot-1.png`
+2. `Figma로 바로 전송 / 파일·클립보드로 저장` — 제작됨: `docs/store-assets/screenshot-2.png`
+3. `Figma에서 편집 가능한 프레임·텍스트·벡터로 재구성`
 4. `Auto Layout + Local styles 자동 생성`
 5. `6자리 코드로 Figma에 바로 전송 (선택)`
 
-> 실제 사용 장면(웹페이지 ↔ Figma 결과 나란히 비교)이 심사·전환율 모두에 좋습니다.
+> 제작 스크립트: `docs/store-assets/generate.py` (Pillow, AppleSDGothicNeo). 팝업 캡처 이미지 경로만
+> 바꿔 재생성 가능. 3~5번은 실제 웹페이지↔Figma 결과 비교 화면을 추가하면 전환율에 좋습니다.
 
 ---
 
