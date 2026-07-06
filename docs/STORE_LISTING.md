@@ -250,7 +250,8 @@ https://github.com/ignite-corp/html2figma/blob/main/docs/PRIVACY.md
 
 | 자산 | 규격 | 상태 |
 |---|---|---|
-| 스토어 아이콘 | 128×128 PNG | 준비됨 (`packages/extension/icons/icon-128.png`) |
+| 스토어 아이콘 | 128×128 PNG | 준비됨 (`packages/extension/icons/icon-128.png`) — 인디고 그라디언트 `</>` 마크 |
+| 아이콘 마스터 | 512×512 PNG | 준비됨 (`packages/extension/icons/icon-512.png`) — 프로모 타일 제작용 |
 | 스크린샷 | 1280×800 또는 640×400 PNG/JPG, 최소 1장(최대 5장) | **직접 캡처 필요** |
 | 소형 프로모 타일 | 440×280 PNG | 선택 |
 | 마키(Marquee) | 1400×560 PNG | 선택 |
