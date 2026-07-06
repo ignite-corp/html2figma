@@ -87,10 +87,11 @@ npx wrangler deploy          # → https://html2figma-relay.<계정>.workers.dev
 - 릴레이 주소: `wss://html2figma-relay.<계정>.workers.dev`
 
 ### 배포 후 공통
-1. 발급된 `wss://…` 주소를 플러그인/익스텐션의 **릴레이 서버 설정**에 입력.
+1. 발급된 `wss://…` 주소를 기본값으로 쓰려면 소스의 `DEFAULT_RELAY_URL`
+   (플러그인 `packages/figma-plugin/src/ui.ts`, 익스텐션 `packages/extension/src/bridge.ts`)을
+   배포 URL로 바꾼 뒤 재빌드한다. (릴레이 주소는 UI에서 설정하지 않고 이 상수로 고정된다.)
 2. 플러그인 `manifest.json`의 `networkAccess.allowedDomains`에 그 도메인이 포함되는지 확인.
    - `*.workers.dev`는 이미 허용. Render/Fly 등은 해당 도메인(`wss://…onrender.com`, `wss://…fly.dev`)을 추가.
-3. 원하면 소스의 `DEFAULT_RELAY_URL`(플러그인 `ui.ts`, 익스텐션 `bridge.ts`)을 배포 URL로 바꿔 기본값으로 굳힐 수 있음.
 
 ### 릴레이 보안/프라이버시 특성 (A·B 공통)
 - 무저장(ephemeral): 페이로드를 디스크에 저장하지 않음.
