@@ -238,11 +238,13 @@ is required. Access is only exercised when the user explicitly triggers a captur
 > 심사 코멘트가 필요하면 "direct-send는 사용자가 명시적으로 켤 때만 동작하며 릴레이는 무저장"임을 기재.
 
 ### 개인정보 처리방침 URL (Privacy policy URL) — **필수**
-`docs/PRIVACY.md`를 공개 URL로 게시한 뒤 그 주소를 입력하세요. 예:
+공개 Gist로 게시 완료. 대시보드의 개인정보 처리방침 URL 란에 아래 주소를 그대로 입력하세요:
 ```
-https://github.com/ignite-corp/html2figma/blob/main/docs/PRIVACY.md
+https://gist.github.com/zi-gae/2df62695588e3a6b4a70edc084676fc0
 ```
-> raw 페이지보다 렌더된 페이지 URL이 심사에 유리. GitHub Pages로 올려도 됩니다.
+> 저장소는 Private 이므로 저장소 blob URL은 외부에서 열리지 않는다. 위 Gist는 **공개(public)**라
+> 익명 접근이 가능하다(검증 완료). PRIVACY.md 내용을 수정하면 Gist도 갱신해야 한다:
+> `gh gist edit 2df62695588e3a6b4a70edc084676fc0 docs/PRIVACY.md`
 
 ---
 
