@@ -318,6 +318,7 @@ export class Renderer {
     const singleLine = !node.characters.includes("\n") && node.layout.height <= lh * 1.6;
     if (singleLine) {
       text.textAutoResize = "WIDTH_AND_HEIGHT";
+      this.fitSingleLineWidth(text, node);
     } else {
       text.textAutoResize = "HEIGHT";
       text.resize(Math.max(1, node.layout.width + 2), text.height);
@@ -336,6 +337,28 @@ export class Renderer {
       text.y = boxCenterY - text.height / 2;
     }
     return text;
+  }
+
+  /**
+   * 단일 줄 텍스트는 자동 폭(WIDTH_AND_HEIGHT)이라 대체 폰트가 원본보다 넓으면 캡처된 박스보다
+   * 오른쪽으로 커져, 바로 뒤에 붙는 요소(예: ? 도움말 배지)를 덮어 간격이 사라진다.
+   * 캡처된 폭보다 넓어진 만큼만 자간을 살짝 좁혀 원본 폭에 맞춰(오버플로 제거) 겹침을 없앤다.
+   * 과도한 압축/오측정 방지를 위해 글자당 축소량과 허용 오버플로 비율을 제한한다.
+   */
+  private fitSingleLineWidth(text: TextNode, node: IRText) {
+    const target = node.layout.width;
+    if (!(target > 0)) return;
+    const n = node.characters.length;
+    if (n < 2) return;
+    // 세그먼트가 자체 자간을 지정했다면 전체 자간 재설정이 이를 덮으므로 건너뛴다(드묾).
+    if (node.segments?.some((s) => s.letterSpacing != null)) return;
+    const overflow = text.width - target;
+    if (overflow <= 0.5) return; // 이미 원본 폭 이하로 맞음
+    if (text.width > target * 1.35) return; // 캡처 폭이 비정상적으로 좁음 → 뭉개지 않도록 보류
+    const baseLs = node.text.letterSpacing ?? 0;
+    const maxReduce = node.text.fontSize * 0.08; // 글자당 최대 축소(과압축 방지)
+    const reduce = Math.min(overflow / (n - 1), maxReduce);
+    text.letterSpacing = { value: baseLs - reduce, unit: "PIXELS" };
   }
 
   private async buildImage(node: IRImage, parentX: number, parentY: number): Promise<SceneNode> {
