@@ -85,6 +85,8 @@ export async function collectPseudoIcons(session: CdpSession): Promise<PseudoIco
       for (const p of ["::before", "::after"]) {
         const cs = getComputedStyle(el, p);
         if (!cs || cs.display === "none") continue;
+        if (parseFloat(cs.opacity) === 0) continue;
+        if (cs.visibility === "hidden") continue;
         if (cs.content === "none" || cs.content === "normal" || !cs.content) continue;
         let url: string | null = null;
         // url("...") 안의 값을 안전하게 추출한다. URL 인코딩된 SVG data URL 은 내부에

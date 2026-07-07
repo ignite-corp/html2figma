@@ -1,4 +1,5 @@
 import type { H2FNode, FrameNode, Layout } from "@html2figma/shared";
+import type { RawNode } from "./snapshot.js";
 import { parsePx } from "@html2figma/shared";
 
 export function isSvgUrl(url: string): boolean {
@@ -80,4 +81,29 @@ export function unionBounds(nodes: H2FNode[]): Layout {
     maxY = Math.max(maxY, n.layout.y + n.layout.height);
   }
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
+export function layoutOf(node: RawNode, ox: number, oy: number): Layout | null {
+  if (!node.layout) return null;
+  const [x, y, width, height] = node.layout.bounds;
+  if (width <= 0 || height <= 0) return null;
+  return { x: x + ox, y: y + oy, width, height, order: node.layout.paintOrder };
+}
+
+export function layoutFromRawLayout(rl: NonNullable<RawNode["layout"]>, ox: number, oy: number): Layout | null {
+  const [x, y, width, height] = rl.bounds;
+  if (width <= 0 || height <= 0) return null;
+  return { x: x + ox, y: y + oy, width, height, order: rl.paintOrder };
+}
+
+export function isRendered(node: RawNode): boolean {
+  if (!node.layout) return false;
+  if (node.layout.styles["visibility"] === "hidden") return false;
+  if (node.layout.styles["display"] === "none") return false;
+  // opacity:0 요소는 브라우저에서 보이지 않는다. DOMSnapshot 은 ::before/::after 의사요소를
+  // 실제 노드로 포함하는데, opacity:0 툴팁(.help::after 등)이 렌더되면 자기 배경(예: 어두운
+  // 상자)이나 오토레이아웃 자식으로 남아 원본에 없는 회색/검정 박스가 생긴다. 투명 요소는
+  // 서브트리째 건너뛴다(opacity 는 자손에 곱해지므로 자식도 함께 숨겨진다).
+  if (parseFloat(node.layout.styles["opacity"] ?? "1") === 0) return false;
+  return true;
 }

@@ -60,6 +60,9 @@ export const COMPUTED_STYLES = [
   "text-align",
   "text-decoration-line",
   "text-transform",
+
+  // 폼 컨트롤(radio/checkbox) accent 색 재구성용
+  "accent-color",
 ] as const;
 
 export type ComputedStyleName = (typeof COMPUTED_STYLES)[number];
