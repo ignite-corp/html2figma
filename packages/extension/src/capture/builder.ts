@@ -196,6 +196,172 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
     };
   }
 
+  /** SELECT 요소의 선택된 텍스트와 ▾ 드롭다운 화살표를 텍스트 노드로 합성 */
+  function buildSelectText(node: RawNode, ox: number, oy: number): TextNode[] {
+    if (node.nodeName !== "SELECT") return [];
+
+    // OPTION 요소를 재귀적으로 수집 (OPTGROUP 내부도 탐색)
+    function collectOptions(children: RawNode[]): RawNode[] {
+      const opts: RawNode[] = [];
+      for (const c of children) {
+        if (c.nodeName === "OPTION") opts.push(c);
+        else if (c.nodeName === "OPTGROUP") opts.push(...collectOptions(c.children));
+      }
+      return opts;
+    }
+    const allOptions = collectOptions(node.children);
+
+    // 선택된 OPTION 의 텍스트 수집
+    let text = "";
+    for (const opt of allOptions) {
+      if (opt.attributes["selected"] != null) {
+        text = opt.children.find((t) => t.nodeType === 3)?.nodeValue?.trim() ?? "";
+        break;
+      }
+    }
+    if (!text && allOptions.length > 0) {
+      // selected 속성 없으면 첫 번째 OPTION 텍스트
+      text = allOptions[0].children.find((t) => t.nodeType === 3)?.nodeValue?.trim() ?? "";
+    }
+
+    const box = layoutOf(node, ox, oy);
+    if (!box) return [];
+
+    const styles = node.layout!.styles;
+    const padL = parsePx(styles["padding-left"]);
+    const padR = parsePx(styles["padding-right"]);
+    const padT = parsePx(styles["padding-top"]);
+    const padB = parsePx(styles["padding-bottom"]);
+    const ts = mapTextStyle(styles);
+    const h = Math.max(1, box.height - padT - padB);
+    const arrowW = 14;
+
+    const nodes: TextNode[] = [];
+    if (text) {
+      nodes.push({
+        id: nextId(),
+        name: text.slice(0, 24) || "text",
+        type: "text",
+        layout: {
+          x: box.x + padL,
+          y: box.y + padT,
+          width: Math.max(1, box.width - padL - padR - arrowW),
+          height: h,
+          order: box.order,
+        },
+        style: {},
+        characters: text,
+        text: ts,
+      });
+    }
+    const arrowX = Math.max(box.x + padL, box.x + box.width - padR - arrowW);
+    const arrowNode: TextNode = {
+      id: nextId(),
+      name: "▾",
+      type: "text",
+      layout: {
+        x: arrowX,
+        y: box.y + padT,
+        width: arrowW,
+        height: h,
+        order: box.order,
+      },
+      style: {},
+      characters: "▾",
+      text: { ...ts, textAlign: "center" },
+    };
+    nodes.push(arrowNode);
+    return nodes;
+  }
+
+  /** checkbox / radio INPUT 을 프레임 + 자식 텍스트로 합성 */
+  function buildFormControl(node: RawNode, ox: number, oy: number): H2FNode[] {
+    if (node.nodeName !== "INPUT") return [];
+    const type = (node.attributes["type"] ?? "text").toLowerCase();
+    const isCheckbox = type === "checkbox";
+    const isRadio = type === "radio";
+    if (!isCheckbox && !isRadio) return [];
+
+    const layout = layoutOf(node, ox, oy);
+    if (!layout) return [];
+
+    const isChecked = node.attributes["checked"] != null;
+    const order = layout.order ?? 0;
+    const white = { r: 1, g: 1, b: 1, a: 1 };
+    const children: H2FNode[] = [];
+
+    if (isChecked && isRadio) {
+      // checked 라디오: 중앙 흰 ● 마크를 프레임 자식으로 추가 (mapStyle 로 그린 배경 위에 올림)
+      const dotSize = Math.max(4, Math.round(Math.min(layout.width, layout.height) * 0.4));
+      children.push({
+        id: nextId(),
+        name: "●",
+        type: "text",
+        layout: {
+          x: layout.x,
+          y: layout.y,
+          width: layout.width,
+          height: layout.height,
+          order: order + 1,
+        },
+        style: {},
+        characters: "●",
+        text: {
+          fontFamily: "Inter",
+          fontStyle: "Regular",
+          fontWeight: 400,
+          fontSize: dotSize,
+          color: white,
+          textAlign: "center",
+          textDecoration: "none",
+          textCase: "original",
+        },
+      } as TextNode);
+    }
+
+    if (isChecked && isCheckbox) {
+      // checked 체크박스: 흰색 ✓ 텍스트 자식
+      const fontSize = Math.max(8, Math.round(Math.min(layout.width, layout.height) * 0.75));
+      children.push({
+        id: nextId(),
+        name: "✓",
+        type: "text",
+        layout: {
+          x: layout.x,
+          y: layout.y,
+          width: layout.width,
+          height: layout.height,
+          order: order + 1,
+        },
+        style: {},
+        characters: "✓",
+        text: {
+          fontFamily: "Inter",
+          fontStyle: "Regular",
+          fontWeight: 400,
+          fontSize,
+          color: white,
+          textAlign: "center",
+          textDecoration: "none",
+          textCase: "original",
+        },
+      } as TextNode);
+    }
+
+    if (children.length === 0) return [];
+
+    const style = mapStyle(node.layout!.styles);
+    const frame: FrameNode = {
+      id: nextId(),
+      name: isRadio ? "radio" : "checkbox",
+      type: "frame",
+      layout,
+      style,
+      children: sortByOrder(children),
+    };
+    return [frame];
+  }
+
   function buildImage(node: RawNode, ox: number, oy: number): H2FNode | null {
     const layout = layoutOf(node, ox, oy);
     if (!layout) return null;
@@ -352,6 +518,13 @@ export function buildIR(snapshot: ParsedSnapshot): BuildResult {
 
     const it = buildInputText(node, ox, oy);
     if (it) children.push(it);
+
+    // SELECT ▾ 화살표 합성
+    for (const st of buildSelectText(node, ox, oy)) children.push(st);
+
+    // checkbox / radio 체크 마크 합성 (이미 프레임+자식까지 반환하므로 early-return)
+    const fc = buildFormControl(node, ox, oy);
+    if (fc.length > 0) return fc;
 
     for (const c of node.children) {
       if (c.nodeType === 1) children.push(...build(c, ox, oy, childClip));
