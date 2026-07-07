@@ -622,7 +622,7 @@ function inlineSplitSnap(): CaptureSnapshotResult {
         },
         layout: {
           nodeIndex: [0, 1, 2, 4, 5, 6],
-          styles: [row({ display: "block" }), row({ display: "block" }), row({}), row({ display: "inline" }), row({}), row({})],
+          styles: [row({ display: "block" }), row({ display: "block" }), row({}), row({ display: "inline", "font-weight": "700" }), row({}), row({})],
           bounds: [
             [0, 0, 700, 150],
             [0, 0, 700, 147],
@@ -649,9 +649,17 @@ const splitTexts = collectTexts(splitIR.root);
 const merged = splitTexts.find(
   (t) => (t as { characters?: string }).characters?.includes("200가지") && (t as { characters?: string }).characters?.includes("입니다")
 );
-assert(!merged, "인라인 요소 앞뒤 텍스트가 하나로 합쳐지지 않음");
-const tail = splitTexts.find((t) => (t as { characters?: string }).characters === "입니다");
-assert(!!tail && tail.layout.x >= 200, "strong 뒤 '입니다' 가 자기 위치(x≈228)에 배치됨(x=0 겹침 아님)");
+assert(!!merged, "인라인 요소가 섞인 텍스트가 하나의 노드로 병합됨(조각 분리 아님)");
+{
+  const segs = (merged as { segments?: { start: number; end: number; fontWeight?: number }[] }).segments;
+  const chars = (merged as { characters?: string }).characters ?? "";
+  const bold = segs?.find((sg) => (sg.fontWeight ?? 400) >= 700);
+  assert(!!bold, "굵은 <strong> 구간이 bold segment 로 표시됨");
+  assert(
+    !!bold && chars.slice(bold.start, bold.end) === "제조사 무사고 인증차량",
+    "bold segment 범위가 <strong> 내부 텍스트를 정확히 덮음"
+  );
+}
 
 /* -------- 인라인 <b> 앞뒤 공백 보존 (버튼 "…완료) 166 건" 붙음 방지) -------- */
 function inlineSpaceSnap(): CaptureSnapshotResult {
@@ -680,7 +688,7 @@ function inlineSpaceSnap(): CaptureSnapshotResult {
         },
         layout: {
           nodeIndex: [0, 1, 2, 3, 4],
-          styles: [row({ display: "block" }), row({}), row({ display: "inline" }), row({}), row({})],
+          styles: [row({ display: "block" }), row({}), row({ display: "inline", "font-weight": "700" }), row({}), row({})],
           bounds: [
             [0, 0, 200, 40],
             [10, 10, 118, 20], // "전시준비중(탁송 완료) " (끝 공백 포함)
@@ -695,13 +703,18 @@ function inlineSpaceSnap(): CaptureSnapshotResult {
   } as unknown as CaptureSnapshotResult;
 }
 const spaceTexts = collectTexts(buildIR(parseAllDocuments(inlineSpaceSnap())).root);
-const label = spaceTexts.find((t) => (t as { characters?: string }).characters?.startsWith("전시준비중"));
-const geon = spaceTexts.find((t) => (t as { characters?: string }).characters?.includes("건"));
+const spaceMerged = spaceTexts.find((t) => (t as { characters?: string }).characters?.includes("전시준비중"));
 assert(
-  (label as { characters?: string })?.characters === "전시준비중(탁송 완료) ",
-  "인라인 <b> 앞 텍스트의 끝 공백이 보존됨"
+  (spaceMerged as { characters?: string })?.characters === "전시준비중(탁송 완료) 166 건",
+  "인라인 <b> 가 섞인 버튼 텍스트가 공백 보존된 하나의 노드로 병합됨(완료)166 붙음 방지)"
 );
-assert((geon as { characters?: string })?.characters === " 건", "인라인 <b> 뒤 '건' 의 앞 공백이 보존됨(166건 붙음 방지)");
+{
+  const chars = (spaceMerged as { characters?: string }).characters ?? "";
+  const segs = (spaceMerged as { segments?: { start: number; end: number; fontWeight?: number }[] }).segments;
+  const bold = segs?.find((sg) => (sg.fontWeight ?? 400) >= 700);
+  assert(!!bold, "<b>166</b> 이 bold segment 로 표시됨");
+  assert(!!bold && chars.slice(bold.start, bold.end) === "166", "bold segment 범위가 '166' 을 정확히 덮음");
+}
 
 /* ---------------- 상대 이미지 URL → 절대 URL 해석 케이스 ---------------- */
 console.log("\n상대 이미지 URL 해석:");

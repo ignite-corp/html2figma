@@ -57,7 +57,22 @@ export class Renderer {
   private async preloadFonts(node: H2FNode): Promise<void> {
     const needed = new Map<string, IRText["text"]>();
     const collect = (n: H2FNode) => {
-      if (n.type === "text") needed.set(`${n.text.fontFamily}__${n.text.fontStyle}`, n.text);
+      if (n.type === "text") {
+        needed.set(`${n.text.fontFamily}__${n.text.fontStyle}`, n.text);
+        if (n.segments) {
+          for (const sg of n.segments) {
+            if (!sg.fontStyle && !sg.fontFamily) continue;
+            const fam = sg.fontFamily ?? n.text.fontFamily;
+            const stl = sg.fontStyle ?? n.text.fontStyle;
+            needed.set(`${fam}__${stl}`, {
+              ...n.text,
+              fontFamily: fam,
+              fontStyle: stl,
+              fontWeight: sg.fontWeight ?? n.text.fontWeight,
+            });
+          }
+        }
+      }
       if (n.type === "frame") n.children.forEach(collect);
     };
     collect(node);
@@ -275,6 +290,27 @@ export class Renderer {
     text.textDecoration = mapDecoration(node.text.textDecoration);
     text.textCase = mapTextCase(node.text.textCase);
     text.fills = [solid(node.text.color)];
+
+    // 인라인 서식 range 스타일 적용 (굵게/색/밑줄 등이 다른 구간)
+    if (node.segments?.length) {
+      for (const sg of node.segments) {
+        const start = Math.max(0, sg.start);
+        const end = Math.min(node.characters.length, sg.end);
+        if (end <= start) continue;
+        if (sg.fontStyle || sg.fontFamily) {
+          const fam = sg.fontFamily ?? node.text.fontFamily;
+          const stl = sg.fontStyle ?? node.text.fontStyle;
+          const f = await this.loadFont(fam, stl, sg.fontWeight ?? node.text.fontWeight);
+          text.setRangeFontName(start, end, f);
+        }
+        if (sg.color) text.setRangeFills(start, end, [solid(sg.color)]);
+        if (sg.textDecoration) text.setRangeTextDecoration(start, end, mapDecoration(sg.textDecoration));
+        if (sg.fontSize != null) text.setRangeFontSize(start, end, sg.fontSize);
+        if (sg.letterSpacing != null) {
+          text.setRangeLetterSpacing(start, end, { value: sg.letterSpacing, unit: "PIXELS" });
+        }
+      }
+    }
 
     // 캡처된 박스 크기에 맞춤. 단일 줄 텍스트는 대체 폰트 폭 차이로 마지막 글자가
     // 줄바꿈되는 것을 막기 위해 자동 폭으로 둔다. 여러 줄(원본에서 이미 줄바꿈)만 폭 고정.
