@@ -2,10 +2,6 @@ import type { H2FFile, RelayServerMsg } from "@html2figma/shared";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
-const drop = $<HTMLDivElement>("drop");
-const fileInput = $<HTMLInputElement>("file");
-const paste = $<HTMLTextAreaElement>("paste");
-const importBtn = $<HTMLButtonElement>("import");
 const autolayout = $<HTMLInputElement>("autolayout");
 const styles = $<HTMLInputElement>("styles");
 const statusEl = $<HTMLDivElement>("status");
@@ -14,9 +10,9 @@ const bridgeStatus = $<HTMLSpanElement>("bridge-status");
 const bridgeDot = $<HTMLSpanElement>("bridge-dot");
 const codeBox = $<HTMLDivElement>("code-box");
 const codeEl = $<HTMLDivElement>("code");
+const copyCodeBtn = $<HTMLButtonElement>("copy-code");
 
 const DEFAULT_RELAY_URL = "wss://html2figma-relay.onrender.com";
-let file: H2FFile | null = null;
 let ws: WebSocket | null = null;
 
 function setStatus(t: string) {
@@ -34,99 +30,88 @@ function doImport(f: H2FFile) {
   );
 }
 
-function loadFromText(text: string) {
-  try {
-    const parsed = JSON.parse(text) as H2FFile;
-    const ok = "version" in parsed && "root" in parsed;
-    if (!ok) throw new Error("올바른 .h2f 형식이 아닙니다.");
-    file = parsed;
-    importBtn.disabled = false;
-    setStatus(`문서 로드됨 — ${parsed.meta?.title || "무제"}`);
-  } catch (e) {
-    file = null;
-    importBtn.disabled = true;
-    setStatus(`파싱 실패: ${e instanceof Error ? e.message : e}`);
-  }
-}
-
-drop.addEventListener("click", () => fileInput.click());
-drop.addEventListener("dragover", (e: DragEvent) => {
-  e.preventDefault();
-  drop.classList.add("over");
-});
-drop.addEventListener("dragleave", () => drop.classList.remove("over"));
-drop.addEventListener("drop", (e: DragEvent) => {
-  e.preventDefault();
-  drop.classList.remove("over");
-  const f = e.dataTransfer?.files[0];
-  if (f) f.text().then(loadFromText);
-});
-
-fileInput.addEventListener("change", () => {
-  const f = fileInput.files?.[0];
-  if (f) f.text().then(loadFromText);
-});
-
-paste.addEventListener("input", () => {
-  if (paste.value.trim()) loadFromText(paste.value.trim());
-});
-
-importBtn.addEventListener("click", () => {
-  if (!file) return;
-  importBtn.disabled = true;
-  doImport(file);
-});
-
 /* ---------------- 릴레이 페어링 (Figma로 바로 받기) ---------------- */
 
-function setBridgeState(connected: boolean, text: string) {
-  bridgeDot.classList.toggle("on", connected);
+type DotState = "off" | "wait" | "on";
+
+function setBridgeState(dot: DotState, text: string, btnLabel?: string, btnActive?: boolean) {
+  bridgeDot.classList.toggle("on",   dot === "on");
+  bridgeDot.classList.toggle("wait", dot === "wait");
   bridgeStatus.textContent = text;
+  if (btnLabel !== undefined) bridgeConnectBtn.textContent = btnLabel;
+  if (btnActive !== undefined) bridgeConnectBtn.classList.toggle("active", btnActive);
+}
+
+let copyTimer: ReturnType<typeof setTimeout> | null = null;
+
+function flashCopied() {
+  copyCodeBtn.textContent = "복사됨!";
+  copyCodeBtn.classList.add("copied");
+  if (copyTimer) clearTimeout(copyTimer);
+  copyTimer = setTimeout(() => {
+    copyCodeBtn.textContent = "복사";
+    copyCodeBtn.classList.remove("copied");
+  }, 2000);
+}
+
+copyCodeBtn.addEventListener("click", () => {
+  const code = codeEl.textContent?.trim();
+  if (!code) return;
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(code).then(flashCopied).catch(() => copyFallback(code));
+  } else {
+    copyFallback(code);
+  }
+});
+
+function copyFallback(text: string) {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.cssText = "position:fixed;opacity:0;pointer-events:none";
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand("copy"); flashCopied(); } catch { /* ignore */ }
+  document.body.removeChild(ta);
 }
 
 function disconnect() {
-  if (ws) {
-    ws.close();
-    ws = null;
-  }
+  if (ws) { ws.close(); ws = null; }
   codeBox.classList.add("hidden");
   codeEl.textContent = "";
-  bridgeConnectBtn.textContent = "연결 (코드 받기)";
-  setBridgeState(false, "Figma로 바로 받기: 연결 해제됨");
+  setBridgeState("off", "연결 해제됨", "연결하기", false);
 }
 
 bridgeConnectBtn.addEventListener("click", () => {
-  if (ws) {
-    disconnect();
-    return;
-  }
-  const url = DEFAULT_RELAY_URL;
-  setBridgeState(false, "연결 중…");
+  if (ws) { disconnect(); return; }
+
+  setBridgeState("wait", "연결 중…", "연결 중…", false);
+  bridgeConnectBtn.disabled = true;
+
   try {
-    ws = new WebSocket(url);
+    ws = new WebSocket(DEFAULT_RELAY_URL);
   } catch {
-    setBridgeState(false, "연결 실패 (주소 확인)");
+    bridgeConnectBtn.disabled = false;
+    setBridgeState("off", "연결 실패 — 주소를 확인하세요", "연결하기", false);
     return;
   }
+
   ws.onopen = () => {
+    bridgeConnectBtn.disabled = false;
     ws?.send(JSON.stringify({ type: "create-room" }));
-    bridgeConnectBtn.textContent = "연결 해제";
+    setBridgeState("wait", "코드 생성 중…", "연결 해제", true);
   };
   ws.onmessage = (ev: MessageEvent) => {
     let msg: RelayServerMsg;
-    try {
-      msg = JSON.parse(String(ev.data)) as RelayServerMsg;
-    } catch {
-      return;
-    }
+    try { msg = JSON.parse(String(ev.data)) as RelayServerMsg; } catch { return; }
+
     if (msg.type === "room") {
       codeEl.textContent = msg.code;
       codeBox.classList.remove("hidden");
-      setBridgeState(true, "코드 대기 중 — 익스텐션에 입력하세요");
+      setBridgeState("wait", "익스텐션에 코드를 입력하세요");
     } else if (msg.type === "peer-joined") {
-      setBridgeState(true, "익스텐션 연결됨 — 캡처를 기다리는 중");
+      setBridgeState("on", "익스텐션 연결됨 — 캡처 대기 중");
     } else if (msg.type === "h2f" && msg.payload) {
-      setStatus("릴레이 수신 — 임포트 중…");
+      setStatus("수신 완료 — 임포트 중…");
       doImport(msg.payload as H2FFile);
     } else if (msg.type === "h2f-chunk") {
       receiveChunk(msg);
@@ -134,12 +119,12 @@ bridgeConnectBtn.addEventListener("click", () => {
   };
   ws.onclose = () => {
     ws = null;
+    bridgeConnectBtn.disabled = false;
     codeBox.classList.add("hidden");
-    bridgeConnectBtn.textContent = "연결 (코드 받기)";
-    setBridgeState(false, "연결 끊김");
+    setBridgeState("off", "연결 끊김", "연결하기", false);
   };
   ws.onerror = () => {
-    setBridgeState(false, "오류 (릴레이 실행/주소 확인)");
+    setBridgeState("off", "오류 — 릴레이 서버를 확인하세요");
   };
 });
 
@@ -177,8 +162,5 @@ function receiveChunk(msg: Extract<RelayServerMsg, { type: "h2f-chunk" }>) {
 
 window.onmessage = (event: MessageEvent) => {
   const msg = event.data.pluginMessage;
-  if (msg?.type === "status") {
-    setStatus(msg.text);
-    if (msg.text === "완료!") importBtn.disabled = false;
-  }
+  if (msg?.type === "status") setStatus(msg.text);
 };

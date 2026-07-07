@@ -194,6 +194,9 @@ export class Renderer {
         } else {
           this.position(svgNode, node, parentX, parentY);
         }
+        if (node.style.effects?.length) {
+          svgNode.effects = node.style.effects.map(toFigmaEffect);
+        }
         return svgNode;
       } catch {
         /* 파싱 실패 시 플레이스홀더로 대체 */
