@@ -653,6 +653,56 @@ assert(!merged, "인라인 요소 앞뒤 텍스트가 하나로 합쳐지지 않
 const tail = splitTexts.find((t) => (t as { characters?: string }).characters === "입니다");
 assert(!!tail && tail.layout.x >= 200, "strong 뒤 '입니다' 가 자기 위치(x≈228)에 배치됨(x=0 겹침 아님)");
 
+/* -------- 인라인 <b> 앞뒤 공백 보존 (버튼 "…완료) 166 건" 붙음 방지) -------- */
+function inlineSpaceSnap(): CaptureSnapshotResult {
+  const s: string[] = [""];
+  const it = (v: string) => {
+    const i = s.indexOf(v);
+    if (i >= 0) return i;
+    s.push(v);
+    return s.length - 1;
+  };
+  const row = (m: Record<string, string>) => COMPUTED_STYLES.map((n) => it(m[n] ?? ""));
+  // <div>전시준비중(탁송 완료) <b>166</b> 건</div>
+  return {
+    strings: s,
+    documents: [
+      {
+        documentURL: it("https://example.com"),
+        title: it("space"),
+        nodes: {
+          parentIndex: [-1, 0, 0, 2, 0],
+          nodeType: [1, 3, 1, 3, 3],
+          nodeName: [it("DIV"), it("#text"), it("B"), it("#text"), it("#text")],
+          nodeValue: [it(""), it("전시준비중(탁송 완료) "), it(""), it("166"), it(" 건")],
+          backendNodeId: [1, 2, 3, 4, 5],
+          attributes: [[], [], [], [], []],
+        },
+        layout: {
+          nodeIndex: [0, 1, 2, 3, 4],
+          styles: [row({ display: "block" }), row({}), row({ display: "inline" }), row({}), row({})],
+          bounds: [
+            [0, 0, 200, 40],
+            [10, 10, 118, 20], // "전시준비중(탁송 완료) " (끝 공백 포함)
+            [128, 10, 24, 20], // <b> 166
+            [128, 10, 24, 20], // 166 텍스트
+            [152, 10, 20, 20], // " 건" (앞 공백 포함) — 박스는 <b> 오른쪽 끝(152)에서 시작
+          ],
+          text: [it(""), it("전시준비중(탁송 완료) "), it(""), it("166"), it(" 건")],
+        },
+      },
+    ],
+  } as unknown as CaptureSnapshotResult;
+}
+const spaceTexts = collectTexts(buildIR(parseAllDocuments(inlineSpaceSnap())).root);
+const label = spaceTexts.find((t) => (t as { characters?: string }).characters?.startsWith("전시준비중"));
+const geon = spaceTexts.find((t) => (t as { characters?: string }).characters?.includes("건"));
+assert(
+  (label as { characters?: string })?.characters === "전시준비중(탁송 완료) ",
+  "인라인 <b> 앞 텍스트의 끝 공백이 보존됨"
+);
+assert((geon as { characters?: string })?.characters === " 건", "인라인 <b> 뒤 '건' 의 앞 공백이 보존됨(166건 붙음 방지)");
+
 /* ---------------- 상대 이미지 URL → 절대 URL 해석 케이스 ---------------- */
 console.log("\n상대 이미지 URL 해석:");
 const relSnap: CaptureSnapshotResult = {

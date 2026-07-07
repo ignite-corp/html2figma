@@ -51,12 +51,20 @@ export function buildDirectTexts(ctx: BuildCtx, node: RawNode, ox: number, oy: n
   const out: TextNode[] = [];
   let parts: string[] = [];
   let firstLayout: RawNode["layout"];
-  const flush = () => {
-    const text = parts.join("").replace(/\s+/g, " ").trim();
+  // 인라인 형제 요소(<b>/<span> 등)와 접한 쪽의 공백은 브라우저가 실제로 렌더하므로
+  // 유지한다. 조각은 자기 레이아웃 박스의 좌측에 정렬되는데, 그 박스에는 인접 공백이
+  // 포함돼 있어(예: " 건") 공백을 지우면 숫자·텍스트가 붙어버린다.
+  let leadingElem = false;
+  const flush = (trailingElem: boolean) => {
+    let text = parts.join("").replace(/\s+/g, " ");
     const fl = firstLayout;
+    const hadLead = leadingElem;
     parts = [];
     firstLayout = undefined;
-    if (!text) return;
+    leadingElem = trailingElem;
+    if (!hadLead) text = text.replace(/^\s+/, ""); // 부모 콘텐츠 앞쪽(소스 들여쓰기) 공백 제거
+    if (!trailingElem) text = text.replace(/\s+$/, ""); // 부모 콘텐츠 뒤쪽 공백 제거
+    if (!text.trim()) return; // 공백뿐인 조각은 스킵
     const t = buildText(ctx, node, text, fl, ox, oy);
     if (t) out.push(t);
   };
@@ -65,10 +73,10 @@ export function buildDirectTexts(ctx: BuildCtx, node: RawNode, ox: number, oy: n
       if (!firstLayout && c.layout) firstLayout = c.layout;
       parts.push(c.layout?.text ?? c.nodeValue);
     } else {
-      flush();
+      flush(true);
     }
   }
-  flush();
+  flush(false);
   return out;
 }
 
