@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>store artboards</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<style>
+  :root {
+    --bg:#07070d; --tx:#f2f2f8; --tx2:#a7a7bc; --tx3:#63637a;
+    --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.17);
+    --acc:#6c7bff; --acc2:#a78bfa; --acc3:#22d3ee; --pink:#f472b6;
+    --grad:linear-gradient(120deg,#6c7bff,#a78bfa 45%,#22d3ee);
+    --mono:ui-monospace,"SF Mono",Menlo,monospace;
+  }
+  * { box-sizing:border-box; margin:0; }
+  body { background:#26262e; font-family:"Pretendard Variable",Pretendard,-apple-system,sans-serif; color:var(--tx);
+    display:flex; flex-direction:column; gap:40px; padding:40px; -webkit-font-smoothing:antialiased; }
+  .board { position:relative; overflow:hidden; background:var(--bg); flex:none; }
+  .blob { position:absolute; border-radius:50%; filter:blur(80px); }
+  .gridbg { position:absolute; inset:0;
+    background-image:linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px);
+    background-size:52px 52px;
+    -webkit-mask-image:radial-gradient(ellipse 90% 75% at 50% 20%,#000 30%,transparent 78%); }
+  .logo { border-radius:10px; background:var(--grad); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; }
+  .g { background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .chip { display:inline-flex; align-items:center; font-size:14px; color:var(--tx2); border:1px solid var(--line2); border-radius:999px; padding:7px 16px; background:rgba(255,255,255,.04); }
+  .kbd { font-family:var(--mono); color:var(--acc3); background:rgba(34,211,238,.09); border:1px solid rgba(34,211,238,.3); border-radius:8px; padding:2px 9px; }
+
+  /* ── 미니 브라우저 / 피그마 패널 (공용) ── */
+  .pane { border-radius:16px; border:1px solid var(--line2); background:#101020; overflow:hidden; display:flex; flex-direction:column;
+    box-shadow:0 30px 80px -20px rgba(0,0,0,.7); }
+  .pane .bar { display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line); background:#151528; flex:none; }
+  .dots i { display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:6px; }
+  .dots i:nth-child(1){background:#ff5f57}.dots i:nth-child(2){background:#febc2e}.dots i:nth-child(3){background:#28c840}
+  .url { flex:1; font-family:var(--mono); font-size:12px; color:var(--tx3); background:#0d0d1c; border:1px solid var(--line); border-radius:8px; padding:6px 12px; }
+  .exticon { width:28px; height:28px; border-radius:8px; background:var(--grad); display:flex; align-items:center; justify-content:center; color:#fff; font-size:9px; font-weight:800;
+    box-shadow:0 0 0 5px rgba(108,123,255,.28); }
+  .sk { border-radius:8px; background:#1d1d34; }
+  .figbar { display:flex; align-items:center; gap:9px; padding:12px 14px; border-bottom:1px solid var(--line); background:#151528; font-size:13px; color:var(--tx2); flex:none; }
+  .figdot { width:18px; height:18px; border-radius:5px; background:conic-gradient(from 90deg,#f24e1e,#ff7262,#a259ff,#1abcfe,#0acf83,#f24e1e); }
+  .codechip { margin-left:auto; font-family:var(--mono); font-size:12px; color:var(--acc3); border:1px solid rgba(34,211,238,.35); border-radius:7px; padding:4px 10px; background:rgba(34,211,238,.1); }
+  .layers { width:150px; border-right:1px solid var(--line); padding:12px 10px; font-size:12px; color:var(--tx2); flex:none; }
+  .layers .hd { font-family:var(--mono); font-size:10px; letter-spacing:.12em; color:var(--tx3); margin:0 6px 10px; }
+  .lyr { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:7px; }
+  .lyr i { width:11px; height:11px; border:1.6px solid var(--tx3); border-radius:3px; flex:none; font-style:normal; }
+  .lyr.t i { border:none; font-family:var(--mono); font-size:10px; color:var(--tx3); width:auto; height:auto; }
+  .lyr.sel { background:rgba(108,123,255,.22); color:#cdd3ff; }
+  .canvas { flex:1; position:relative; padding:18px;
+    background-image:linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px); background-size:20px 20px; }
+  .selbox { position:absolute; border:2px solid #4c9aff; }
+  .selbox i { position:absolute; width:8px; height:8px; background:#fff; border:2px solid #4c9aff; border-radius:2px; }
+  .selbox i:nth-child(1){top:-5px;left:-5px}.selbox i:nth-child(2){top:-5px;right:-5px}.selbox i:nth-child(3){bottom:-5px;left:-5px}.selbox i:nth-child(4){bottom:-5px;right:-5px}
+  .arrow { display:flex; flex-direction:column; align-items:center; gap:10px; justify-content:center; }
+  .arrow .packet { font-family:var(--mono); font-size:13px; font-weight:700; color:#0a0a14; background:var(--grad); border-radius:999px; padding:9px 18px; box-shadow:0 8px 34px rgba(108,123,255,.55); white-space:nowrap; }
+  .arrow svg { opacity:.85; }
+
+  /* ══ 스크린샷 공통 (1280×800) ══ */
+  .shot { width:1280px; height:800px; }
+  .shot .head { text-align:center; padding-top:72px; position:relative; }
+  .shot .eyebrow { font-family:var(--mono); font-size:14px; letter-spacing:.18em; color:var(--acc); text-transform:uppercase; margin-bottom:18px; }
+  .shot h1 { font-size:52px; font-weight:800; letter-spacing:-.03em; line-height:1.18; }
+  .shot .sub { margin-top:16px; font-size:19px; color:var(--tx2); }
+  .brandtag { position:absolute; top:36px; left:44px; display:flex; align-items:center; gap:11px; }
+  .brandtag .logo { width:34px; height:34px; font-size:11px; }
+  .brandtag b { font-size:18px; letter-spacing:-.2px; }
+
+  /* S1 hero */
+  #s1 .scene { position:absolute; left:64px; right:64px; bottom:-84px; top:342px; display:flex; gap:26px; align-items:stretch; }
+  #s1 .pane { flex:1.1; }
+  #s1 .fg { flex:1.3; }
+  #s1 .page { flex:1; padding:22px; }
+  #s1 .t1 { height:24px; width:75%; margin-bottom:10px; background:linear-gradient(90deg,#34345c,#2a2a4a); }
+  #s1 .t2 { height:24px; width:52%; margin-bottom:13px; background:linear-gradient(90deg,#34345c,#2a2a4a); }
+  #s1 .t3 { height:11px; width:62%; margin-bottom:16px; }
+  #s1 .cta { height:32px; width:112px; border-radius:10px; background:linear-gradient(120deg,#6c7bff,#8b5cf6); }
+  #s1 .img { height:96px; border-radius:12px; margin-top:18px; background:linear-gradient(120deg,#173a5e,#3b2a6e 55%,#164e63); }
+  #s1 .cards { display:flex; gap:12px; margin-top:16px; }
+  #s1 .card { flex:1; border:1px solid var(--line); border-radius:11px; padding:11px; }
+  #s1 .card .th { height:38px; border-radius:7px; margin-bottom:9px; background:#232342; }
+  #s1 .card .l { height:8px; width:78%; }
+  #s1 .fg .body { flex:1; display:flex; }
+  #s1 .f-t1 { height:20px; width:72%; margin-bottom:9px; background:linear-gradient(90deg,#e0508f,#b23a72); }
+  #s1 .f-t2 { height:10px; width:56%; margin-bottom:14px; }
+  #s1 .f-img { height:76px; border-radius:9px; margin-bottom:13px; background:linear-gradient(120deg,#173a5e,#3b2a6e 55%,#164e63); }
+  #s1 .f-cards { display:flex; gap:10px; }
+  #s1 .f-card { flex:1; border:1px solid var(--line); border-radius:9px; padding:9px; }
+  #s1 .f-card .th { height:28px; border-radius:6px; margin-bottom:7px; background:#232342; }
+  #s1 .f-card .l { height:7px; width:75%; }
+
+  /* S2 popup */
+  #s2 .split { position:absolute; inset:0; display:flex; align-items:center; padding:0 84px; gap:70px; }
+  #s2 .copy { flex:1; }
+  #s2 .copy h1 { font-size:56px; text-align:left; }
+  #s2 .copy .sub { font-size:20px; text-align:left; max-width:420px; }
+  #s2 .chips { display:flex; gap:10px; margin-top:30px; flex-wrap:wrap; }
+  #s2 .popup { width:430px; border-radius:20px; border:1px solid var(--line2); background:#12121f; padding:26px;
+    box-shadow:0 50px 120px -20px rgba(0,0,0,.8), 0 0 90px -30px rgba(108,123,255,.55); flex:none; }
+  #s2 .popup .top { display:flex; align-items:center; gap:12px; margin-bottom:22px; }
+  #s2 .popup .logo { width:38px; height:38px; font-size:12px; }
+  #s2 .popup .nm { font-size:17px; font-weight:800; }
+  #s2 .pill { margin-left:auto; font-size:12.5px; font-weight:700; color:#86efac; background:rgba(52,211,153,.12); border:1px solid rgba(52,211,153,.35); border-radius:999px; padding:5px 12px; }
+  #s2 .lbl { font-size:13px; color:var(--tx3); margin:16px 0 8px; }
+  #s2 .field { font-family:var(--mono); font-size:19px; letter-spacing:.35em; text-align:center; color:var(--tx); background:#0c0c18; border:1px solid var(--line2); border-radius:12px; padding:13px; }
+  #s2 .chk { display:flex; align-items:center; gap:10px; font-size:14px; color:var(--tx2); margin-top:16px; }
+  #s2 .chk .bx { width:18px; height:18px; border-radius:5px; background:var(--acc); display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; font-weight:800; }
+  #s2 .go { margin-top:22px; text-align:center; font-size:16px; font-weight:800; color:#fff; border-radius:13px; padding:15px; background:linear-gradient(120deg,#6c7bff,#8b5cf6); box-shadow:0 10px 34px -8px rgba(108,123,255,.65); }
+
+  /* S3 figma layers */
+  #s3 .stage { position:absolute; left:110px; right:110px; bottom:-60px; top:330px; }
+  #s3 .fg { height:100%; }
+  #s3 .fg .body { flex:1; display:flex; }
+  #s3 .f-t1 { height:24px; width:66%; margin-bottom:11px; background:linear-gradient(90deg,#e0508f,#b23a72); }
+  #s3 .f-t2 { height:11px; width:52%; margin-bottom:16px; }
+  #s3 .f-img { height:92px; border-radius:11px; margin-bottom:15px; background:linear-gradient(120deg,#173a5e,#3b2a6e 55%,#164e63); }
+  #s3 .f-cards { display:flex; gap:12px; }
+  #s3 .f-card { flex:1; border:1px solid var(--line); border-radius:10px; padding:11px; }
+  #s3 .f-card .th { height:34px; border-radius:7px; margin-bottom:8px; background:#232342; }
+  #s3 .f-card .l { height:8px; width:75%; }
+  #s3 .swatch { position:absolute; display:flex; gap:8px; background:#1b1b30; border:1px solid var(--line2); border-radius:13px; padding:11px; box-shadow:0 16px 60px rgba(0,0,0,.6); }
+  #s3 .swatch i { width:22px; height:22px; border-radius:7px; }
+  #s3 .swatch i:nth-child(1){background:#6c7bff}
+  #s3 .swatch i:nth-child(2){background:#f472b6; outline:2.5px solid #fff; outline-offset:2px;}
+  #s3 .swatch i:nth-child(3){background:#34d399}#s3 .swatch i:nth-child(4){background:#fbbf24}
+
+  /* S4 auto layout / styles */
+  #s4 .split { position:absolute; inset:0; display:flex; align-items:center; padding:0 84px; gap:64px; }
+  #s4 .copy { flex:1; }
+  #s4 .copy h1 { font-size:54px; text-align:left; }
+  #s4 .copy .sub { font-size:20px; text-align:left; max-width:430px; }
+  #s4 .visual { width:520px; flex:none; display:flex; flex-direction:column; gap:18px; }
+  #s4 .alframe { border:2px solid var(--acc); border-radius:16px; padding:20px; background:#101020; position:relative; }
+  #s4 .alframe .tag { position:absolute; top:-13px; left:18px; font-family:var(--mono); font-size:11.5px; color:#fff; background:var(--acc); border-radius:7px; padding:3px 10px; }
+  #s4 .row { display:flex; gap:14px; align-items:center; }
+  #s4 .row + .row { margin-top:14px; }
+  #s4 .gap { font-family:var(--mono); font-size:10.5px; color:#f87171; border:1.4px dashed rgba(248,113,113,.6); border-radius:6px; padding:2px 6px; background:rgba(248,113,113,.07); flex:none; }
+  #s4 .blk { border-radius:9px; background:#1d1d34; height:48px; flex:1; }
+  #s4 .blk.b { background:linear-gradient(120deg,#6c7bff,#8b5cf6); }
+  #s4 .styles { border:1px solid var(--line2); border-radius:16px; background:#12121f; padding:18px 20px; }
+  #s4 .styles .hd { font-family:var(--mono); font-size:11px; letter-spacing:.13em; color:var(--tx3); margin-bottom:13px; }
+  #s4 .st { display:flex; align-items:center; gap:12px; font-size:14.5px; color:var(--tx2); padding:7px 0; }
+  #s4 .st i { width:20px; height:20px; border-radius:6px; flex:none; }
+  #s4 .st code { margin-left:auto; font-family:var(--mono); font-size:12px; color:var(--tx3); }
+
+  /* S5 direct-send */
+  #s5 .head h1 { font-size:54px; }
+  #s5 .flow { position:absolute; left:100px; right:100px; top:330px; display:flex; align-items:center; gap:36px; }
+  #s5 .node { flex:1; border:1px solid var(--line2); border-radius:18px; background:#12121f; padding:26px; text-align:center; }
+  #s5 .node .ic { width:52px; height:52px; border-radius:15px; margin:0 auto 14px; display:flex; align-items:center; justify-content:center; font-size:22px; background:rgba(255,255,255,.06); border:1px solid var(--line); }
+  #s5 .node b { display:block; font-size:17px; margin-bottom:5px; }
+  #s5 .node span { font-size:13.5px; color:var(--tx2); }
+  #s5 .code { position:absolute; left:50%; top:610px; transform:translateX(-50%); font-family:var(--mono); font-size:30px; font-weight:700; letter-spacing:.4em; color:#0a0a14;
+    background:var(--grad); border-radius:999px; padding:16px 44px 16px 56px; box-shadow:0 20px 70px -12px rgba(108,123,255,.7); }
+  #s5 .free { position:absolute; left:50%; bottom:36px; transform:translateX(-50%); font-size:15px; color:var(--tx2); }
+  #s5 .free b { color:var(--tx); }
+
+  /* ══ 타일 ══ */
+  #tile-s { width:440px; height:280px; }
+  #tile-s .in { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+  #tile-s .logo { width:52px; height:52px; border-radius:15px; font-size:16px; margin-bottom:16px; box-shadow:0 14px 44px -8px rgba(108,123,255,.65); }
+  #tile-s b { font-size:27px; letter-spacing:-.02em; }
+  #tile-s p { margin-top:8px; font-size:13.5px; color:var(--tx2); }
+  #tile-m { width:1400px; height:560px; }
+  #tile-m .in { position:absolute; inset:0; display:flex; align-items:center; padding:0 90px; gap:80px; }
+  #tile-m .copy { flex:1; }
+  #tile-m .bl { display:flex; align-items:center; gap:14px; margin-bottom:30px; }
+  #tile-m .logo { width:46px; height:46px; border-radius:13px; font-size:14px; }
+  #tile-m .bl b { font-size:24px; }
+  #tile-m h1 { font-size:56px; font-weight:800; letter-spacing:-.03em; line-height:1.16; }
+  #tile-m .sub { margin-top:16px; font-size:19px; color:var(--tx2); }
+  #tile-m .chips { display:flex; gap:10px; margin-top:28px; }
+  #tile-m .visual { width:480px; flex:none; display:flex; align-items:center; gap:20px; }
+  #tile-m .mini { flex:1; border-radius:14px; border:1px solid var(--line2); background:#101020; padding:14px; box-shadow:0 24px 70px -18px rgba(0,0,0,.8); }
+  #tile-m .mini .b1 { height:14px; width:72%; border-radius:5px; background:linear-gradient(90deg,#34345c,#2a2a4a); margin-bottom:8px; }
+  #tile-m .mini .b1.p { background:linear-gradient(90deg,#e0508f,#b23a72); }
+  #tile-m .mini .b2 { height:7px; width:56%; border-radius:4px; background:#1d1d34; margin-bottom:10px; }
+  #tile-m .mini .b3 { height:46px; border-radius:8px; background:linear-gradient(120deg,#173a5e,#3b2a6e 55%,#164e63); margin-bottom:10px; }
+  #tile-m .mini .b4 { display:flex; gap:7px; }
+  #tile-m .mini .b4 i { flex:1; height:24px; border-radius:6px; background:#232342; }
+  #tile-m .mid { flex:none; }
+</style>
+</head>
+<body>
+
+<!-- S1: 히어로 -->
+<div class="board shot" id="s1">
+  <i class="blob" style="width:560px;height:560px;background:#4c5bff;top:-280px;left:-120px;opacity:.4"></i>
+  <i class="blob" style="width:460px;height:460px;background:#7c3aed;top:-200px;right:-120px;opacity:.34"></i>
+  <i class="blob" style="width:400px;height:400px;background:#0891b2;bottom:-220px;left:44%;opacity:.2"></i>
+  <div class="gridbg"></div>
+  <div class="brandtag"><span class="logo">&lt;/&gt;</span><b>html2figma</b></div>
+  <div class="head">
+    <div class="eyebrow">Chrome Extension × Figma Plugin</div>
+    <h1>웹페이지를 그대로,<br /><span class="g">편집 가능한 Figma</span>로.</h1>
+    <p class="sub">스크린샷이 아닌 실제 프레임 · 텍스트 · 벡터 노드</p>
+  </div>
+  <div class="scene">
+    <div class="pane">
+      <div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="url">acme.studio</span><span class="exticon">&lt;/&gt;</span></div>
+      <div class="page">
+        <div class="t1 sk"></div><div class="t2 sk"></div><div class="t3 sk"></div>
+        <div class="cta"></div><div class="img"></div>
+        <div class="cards"><div class="card"><div class="th"></div><div class="sk l"></div></div><div class="card"><div class="th"></div><div class="sk l"></div></div><div class="card"><div class="th"></div><div class="sk l"></div></div></div>
+      </div>
+    </div>
+    <div class="arrow">
+      <div class="packet">page.h2f ⚡</div>
+      <svg width="46" height="18" viewBox="0 0 46 18" fill="none"><path d="M0 9h40m0 0-8-7m8 7-8 7" stroke="url(#ag)" stroke-width="2.4"/><defs><linearGradient id="ag" x1="0" y1="9" x2="46" y2="9" gradientUnits="userSpaceOnUse"><stop stop-color="#6c7bff"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs></svg>
+    </div>
+    <div class="pane fg">
+      <div class="figbar"><span class="figdot"></span> html2figma plugin <span class="codechip">code 704-921</span></div>
+      <div class="body">
+        <div class="layers">
+          <div class="hd">LAYERS</div>
+          <div class="lyr"><i></i> Frame 1440</div>
+          <div class="lyr"><i></i> Navigation</div>
+          <div class="lyr t sel"><i>T</i> Hero title</div>
+          <div class="lyr"><i></i> Hero image</div>
+          <div class="lyr"><i></i> Card grid</div>
+        </div>
+        <div class="canvas">
+          <div class="f-t1 sk" style="position:relative"></div>
+          <div class="f-t2 sk"></div>
+          <div class="f-img"></div>
+          <div class="f-cards"><div class="f-card"><div class="th"></div><div class="sk l"></div></div><div class="f-card"><div class="th"></div><div class="sk l"></div></div><div class="f-card"><div class="th"></div><div class="sk l"></div></div></div>
+          <div class="selbox" style="left:12px;top:12px;width:70%;height:32px"><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S2: 팝업 캡처 -->
+<div class="board shot" id="s2">
+  <i class="blob" style="width:560px;height:560px;background:#4c5bff;top:-260px;right:-100px;opacity:.38"></i>
+  <i class="blob" style="width:420px;height:420px;background:#7c3aed;bottom:-220px;left:-120px;opacity:.3"></i>
+  <div class="gridbg"></div>
+  <div class="brandtag"><span class="logo">&lt;/&gt;</span><b>html2figma</b></div>
+  <div class="split">
+    <div class="copy">
+      <div class="eyebrow" style="font-family:var(--mono);font-size:14px;letter-spacing:.18em;color:var(--acc);text-transform:uppercase;margin-bottom:18px">Step 1 — Capture</div>
+      <h1>클릭 한 번으로<br /><span class="g">캡처</span></h1>
+      <p class="sub" style="margin-top:18px">현재 페이지의 레이아웃 · 텍스트 · 이미지 · SVG를<br />그대로 읽습니다. 가입도, 로그인도 필요 없어요.</p>
+      <div class="chips"><span class="chip">iframe · shadow DOM</span><span class="chip">인라인 SVG → 벡터</span><span class="chip">정확한 폰트·색</span></div>
+    </div>
+    <div class="popup">
+      <div class="top"><span class="logo">&lt;/&gt;</span><span class="nm">html2figma</span><span class="pill">이번 달 무료 5/5</span></div>
+      <div class="chk"><span class="bx">✓</span> 캡처 후 Figma로 바로 전송</div>
+      <div class="lbl">Figma 페어링 코드</div>
+      <div class="field">7 0 4 9 2 1</div>
+      <div class="go">캡처</div>
+    </div>
+  </div>
+</div>
+
+<!-- S3: 실제 레이어 -->
+<div class="board shot" id="s3">
+  <i class="blob" style="width:540px;height:540px;background:#7c3aed;top:-260px;left:-120px;opacity:.36"></i>
+  <i class="blob" style="width:460px;height:460px;background:#0891b2;top:-180px;right:-140px;opacity:.3"></i>
+  <div class="gridbg"></div>
+  <div class="brandtag"><span class="logo">&lt;/&gt;</span><b>html2figma</b></div>
+  <div class="head">
+    <div class="eyebrow">Step 2 — Real Layers</div>
+    <h1><span class="g">실제 레이어</span>로 도착합니다</h1>
+    <p class="sub">텍스트를 선택하고 색을 바꿔보세요 — 이미지라면 불가능한 일이죠</p>
+  </div>
+  <div class="stage">
+    <div class="pane fg">
+      <div class="figbar"><span class="figdot"></span> Figma — html2figma plugin <span class="codechip">✓ imported</span></div>
+      <div class="body">
+        <div class="layers">
+          <div class="hd">LAYERS</div>
+          <div class="lyr"><i></i> Frame 1440</div>
+          <div class="lyr"><i></i> Navigation</div>
+          <div class="lyr t sel"><i>T</i> Hero title</div>
+          <div class="lyr"><i></i> Hero image</div>
+          <div class="lyr"><i></i> Card grid</div>
+          <div class="lyr"><i></i> Footer</div>
+        </div>
+        <div class="canvas">
+          <div class="f-t1 sk" style="position:relative"></div>
+          <div class="f-t2 sk"></div>
+          <div class="f-img"></div>
+          <div class="f-cards"><div class="f-card"><div class="th"></div><div class="sk l"></div></div><div class="f-card"><div class="th"></div><div class="sk l"></div></div><div class="f-card"><div class="th"></div><div class="sk l"></div></div></div>
+          <div class="selbox" style="left:16px;top:14px;width:64%;height:38px"><i></i><i></i><i></i><i></i></div>
+          <div class="swatch" style="left:26%;top:70px"><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S4: Auto Layout + Local Styles -->
+<div class="board shot" id="s4">
+  <i class="blob" style="width:540px;height:540px;background:#0891b2;top:-260px;left:-140px;opacity:.3"></i>
+  <i class="blob" style="width:480px;height:480px;background:#4c5bff;bottom:-240px;right:-120px;opacity:.36"></i>
+  <div class="gridbg"></div>
+  <div class="brandtag"><span class="logo">&lt;/&gt;</span><b>html2figma</b></div>
+  <div class="split">
+    <div class="copy">
+      <div class="eyebrow" style="font-family:var(--mono);font-size:14px;letter-spacing:.18em;color:var(--acc);text-transform:uppercase;margin-bottom:18px">Ready to work</div>
+      <h1><span class="g">Auto Layout</span>과<br />Local Styles까지</h1>
+      <p class="sub" style="margin-top:18px">붙여넣고 끝이 아니라, 바로 작업할 수 있게.<br />레이아웃 구조와 색·텍스트 스타일을 자동 생성합니다.</p>
+      <div class="chips" style="display:flex;gap:10px;margin-top:30px"><span class="chip">Auto Layout 자동 구성</span><span class="chip">Color / Text Styles</span></div>
+    </div>
+    <div class="visual">
+      <div class="alframe">
+        <span class="tag">Auto layout ↓ 16</span>
+        <div class="row"><div class="blk b" style="flex:none;width:120px"></div><span class="gap">gap 16</span><div class="blk"></div></div>
+        <div class="row"><div class="blk"></div><span class="gap">gap 16</span><div class="blk"></div><span class="gap">gap 16</span><div class="blk"></div></div>
+      </div>
+      <div class="styles">
+        <div class="hd">LOCAL STYLES</div>
+        <div class="st"><i style="background:#6c7bff"></i> Primary / 500 <code>#6C7BFF</code></div>
+        <div class="st"><i style="background:#f472b6"></i> Accent / Pink <code>#F472B6</code></div>
+        <div class="st"><i style="background:linear-gradient(120deg,#6c7bff,#22d3ee)"></i> Gradient / Hero <code>Linear</code></div>
+        <div class="st"><i style="display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;background:#232342">Ag</i> Heading / 32 Bold <code>Pretendard</code></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S5: direct-send + 무료 -->
+<div class="board shot" id="s5">
+  <i class="blob" style="width:560px;height:560px;background:#4c5bff;top:-280px;left:30%;opacity:.4"></i>
+  <i class="blob" style="width:420px;height:420px;background:#7c3aed;bottom:-240px;right:-100px;opacity:.28"></i>
+  <div class="gridbg"></div>
+  <div class="brandtag"><span class="logo">&lt;/&gt;</span><b>html2figma</b></div>
+  <div class="head">
+    <div class="eyebrow">Step 3 — Deliver</div>
+    <h1>파일 · 클립보드 · <span class="g">6자리 코드</span></h1>
+    <p class="sub">원하는 방식으로 Figma에 전달하세요</p>
+  </div>
+  <div class="flow">
+    <div class="node"><div class="ic">📄</div><b>.h2f 파일</b><span>다운로드 후 플러그인에 드롭</span></div>
+    <div class="node"><div class="ic">📋</div><b>클립보드</b><span>복사해서 플러그인에 붙여넣기</span></div>
+    <div class="node" style="border-color:rgba(108,123,255,.6);box-shadow:0 0 60px -18px rgba(108,123,255,.6)"><div class="ic">⚡</div><b>direct-send</b><span>6자리 코드로 즉시 전송</span></div>
+  </div>
+  <div class="code">704 921</div>
+  <div class="free">매달 <b>5회 무료</b> · 가입 불필요 · Pro $9/월 무제한</div>
+</div>
+
+<!-- 작은 프로모 타일 440×280 -->
+<div class="board" id="tile-s">
+  <i class="blob" style="width:300px;height:300px;background:#4c5bff;top:-140px;left:-70px;opacity:.45"></i>
+  <i class="blob" style="width:260px;height:260px;background:#7c3aed;bottom:-130px;right:-70px;opacity:.4"></i>
+  <div class="gridbg"></div>
+  <div class="in">
+    <span class="logo">&lt;/&gt;</span>
+    <b>html2figma</b>
+    <p>웹페이지 → 편집 가능한 Figma 레이어</p>
+  </div>
+</div>
+
+<!-- 마키 타일 1400×560 -->
+<div class="board" id="tile-m">
+  <i class="blob" style="width:620px;height:620px;background:#4c5bff;top:-300px;left:-140px;opacity:.42"></i>
+  <i class="blob" style="width:520px;height:520px;background:#7c3aed;top:-220px;right:-140px;opacity:.36"></i>
+  <i class="blob" style="width:420px;height:420px;background:#0891b2;bottom:-260px;left:45%;opacity:.24"></i>
+  <div class="gridbg"></div>
+  <div class="in">
+    <div class="copy">
+      <div class="bl"><span class="logo">&lt;/&gt;</span><b>html2figma</b></div>
+      <h1>웹페이지를 그대로,<br /><span class="g">편집 가능한 Figma</span>로.</h1>
+      <p class="sub">실제 프레임 · 텍스트 · 벡터 노드 — 매달 5회 무료</p>
+      <div class="chips"><span class="chip">Auto Layout</span><span class="chip">SVG → Vector</span><span class="chip">6자리 direct-send</span></div>
+    </div>
+    <div class="visual">
+      <div class="mini"><div class="b1"></div><div class="b2"></div><div class="b3"></div><div class="b4"><i></i><i></i><i></i></div></div>
+      <div class="mid"><svg width="40" height="16" viewBox="0 0 40 16" fill="none"><path d="M0 8h34m0 0-7-6m7 6-7 6" stroke="#6c7bff" stroke-width="2.2"/></svg></div>
+      <div class="mini" style="border-color:rgba(108,123,255,.5)"><div class="b1 p"></div><div class="b2"></div><div class="b3"></div><div class="b4"><i></i><i></i><i></i></div></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
