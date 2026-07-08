@@ -182,15 +182,30 @@ export async function collectPseudoIcons(session: CdpSession): Promise<PseudoIco
             y = rect.top + rect.height + sy - bottom - h;
           else y = rect.top + sy + (rect.height - h) / 2;
         } else {
-          // 정적/상대 배치 의사요소는 인라인 흐름의 시작(콘텐츠 앞)에 온다(예: 좋아요 하트).
-          // 호스트 박스 중앙에 두면(특히 넓은 한 줄 텍스트) 위치가 크게 어긋나므로,
-          // 콘텐츠 좌측 + 첫 줄 세로 중앙으로 배치한다. relative 면 left/top 오프셋을 더한다.
+          // 정적/상대 배치 의사요소는 인라인 흐름의 시작(콘텐츠 앞)에 온다(예: 좋아요 하트,
+          // 메뉴 불릿). 첫 줄 라인박스에 얹히는데, 호스트가 flex align-items:center 등으로
+          // 콘텐츠를 세로 중앙 정렬하면 첫 줄이 호스트 상단이 아니라 중앙에 온다. lineHeight
+          // 만으로 rect.top 기준 중앙을 잡으면 불릿이 위로 치우치므로(메뉴 dot 이 텍스트보다
+          // 위로 뜸), 호스트의 실제 텍스트 첫 줄 rect(Range)로 세로 위치를 맞춘다.
           const hostCs = getComputedStyle(el);
           const padL = parseFloat(hostCs.paddingLeft) || 0;
           const lhNum = parseFloat(hostCs.lineHeight);
           const lineH = Number.isFinite(lhNum) ? lhNum : rect.height;
+          let lineTop = rect.top;
+          let lineBoxH = Math.min(lineH, rect.height);
+          try {
+            const rng = document.createRange();
+            rng.selectNodeContents(el);
+            const rs = rng.getClientRects();
+            if (rs && rs.length > 0 && rs[0].height > 0) {
+              lineTop = rs[0].top;
+              lineBoxH = rs[0].height;
+            }
+          } catch {
+            /* Range 실패 시 lineHeight 기반 폴백 */
+          }
           x = rect.left + sx + padL;
-          y = rect.top + sy + Math.max(0, (Math.min(lineH, rect.height) - h) / 2);
+          y = lineTop + sy + Math.max(0, (lineBoxH - h) / 2);
           if (posT === "relative") {
             if (!isAuto(cs.left) && left != null) x += left;
             if (!isAuto(cs.top) && top != null) y += top;
