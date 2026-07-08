@@ -22,12 +22,16 @@ export interface CaptureDone {
   kind: "done";
   doc: H2FDocument;
   bridgeSent?: boolean;
+  /** 무료 플랜 잔여 횟수. Pro(무제한)면 null, 미소비(전송 실패 등)면 undefined */
+  remaining?: number | null;
 }
 
 /** background → popup 실패 */
 export interface CaptureError {
   kind: "error";
   message: string;
+  /** 페이월 UI 분기용 */
+  code?: "quota-exceeded";
 }
 
 export type PopupToBackground = CaptureRequest;

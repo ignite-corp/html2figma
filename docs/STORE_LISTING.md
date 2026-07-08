@@ -66,9 +66,16 @@ Figma 안에서 색상, 글자, 레이아웃을 바로 수정할 수 있습니�
 • 클립보드 복사 → 플러그인에 붙여넣기
 • direct-send: 6자리 페어링 코드로 익스텐션 → Figma 플러그인으로 즉시 전송(선택)
 
+■ 요금
+• 무료: 매달 5회 변환 (가입·로그인 불필요)
+• Pro: 월 $9 — 무제한 변환, Figma 계정 로그인으로 모든 기기에서 사용, 언제든 해지
+• 결제는 Paddle(Merchant of Record)이 안전하게 처리합니다.
+
 ■ 개인정보
-• 개인정보를 수집·저장·판매하지 않습니다. 분석/트래킹/광고 식별자를 사용하지 않습니다.
-• 캡처 데이터는 기본적으로 사용자의 기기 안에서만 처리됩니다.
+• 무료 사용자의 개인정보는 수집하지 않으며, 사용 횟수는 브라우저 안에만 기록됩니다.
+• Pro 구독 시에만 Figma 로그인으로 최소 정보(Figma 사용자 ID·이메일)와 구독 상태를 저장합니다.
+  Figma 로그인은 신원 확인 전용 권한만 사용하며 Figma 파일에는 접근하지 않습니다.
+• 분석/트래킹/광고 식별자를 사용하지 않습니다. 캡처 데이터는 기본적으로 사용자의 기기 안에서만 처리됩니다.
 • direct-send를 켠 경우에만 데이터가 릴레이 서버를 "통과"하며(저장하지 않고 즉시 중계 후 폐기),
   페어링 코드로 연결된 당사자끼리만 주고받습니다. 전송 구간은 TLS(wss://)로 보호됩니다.
 
@@ -109,9 +116,17 @@ so you can tweak colors, copy and layout right inside Figma.
 • Copy to clipboard → paste into the plugin
 • direct-send: instant extension → plugin transfer via a 6-digit pairing code (optional)
 
+■ Pricing
+• Free: 5 conversions per month (no sign-up required)
+• Pro: $9/month — unlimited conversions, works on all your devices via Figma
+  sign-in, cancel anytime. Payments are securely handled by Paddle (Merchant of Record).
+
 ■ Privacy
-• No personal data is collected, stored or sold. No analytics/tracking/ad IDs.
-• Capture data is processed on your device by default.
+• No personal data is collected for free users; usage counts stay in your browser.
+• Only when you subscribe to Pro do we store minimal account info (Figma user ID,
+  email) and subscription status via Figma sign-in. The sign-in uses an
+  identity-only scope and cannot access your Figma files.
+• No analytics/tracking/ad IDs. Capture data is processed on your device by default.
 • Only when you enable direct-send does data PASS THROUGH a relay (never stored;
   relayed and discarded immediately), exchanged only between parties sharing the
   pairing code, over TLS (wss://).
@@ -210,6 +225,20 @@ Reads active tab info (title/ID) to determine the capture target and the saved
 file name.
 ```
 
+- **identity**
+```
+Pro 구독 구매·확인 시 Figma 계정 OAuth 로그인 창(chrome.identity.launchWebAuthFlow)을
+열기 위해 필요합니다. 무료 사용에는 로그인이 필요 없으며, 로그인은 사용자가
+업그레이드/로그인 버튼을 누를 때만 실행됩니다.
+```
+영어:
+```
+Required to open the Figma account OAuth sign-in window
+(chrome.identity.launchWebAuthFlow) when purchasing or verifying a Pro
+subscription. Free usage requires no sign-in; the flow only runs when the user
+clicks the upgrade/sign-in button.
+```
+
 - **host permissions `<all_urls>`**
 ```
 사용자가 어떤 웹페이지에서든 그 페이지를 캡처할 수 있어야 하므로 모든 URL에 대한
@@ -228,14 +257,21 @@ is required. Access is only exercised when the user explicitly triggers a captur
 ```
 
 ### 데이터 사용 공개 (Data usage disclosures / 인증 체크박스)
-데이터 유형 선택 화면에서 **아무 항목도 선택하지 않습니다**(수집·전송 안 함). 아래 인증에 체크:
+데이터 유형 선택 화면에서 다음을 선택합니다 (Pro 로그인 기능 추가로 변경됨):
+```
+[v] 개인 식별 정보 (Personally identifiable information) — 이메일 주소
+    (Pro 구독자의 Figma 로그인 시에만, 구독 자격 확인 목적)
+[v] 인증 정보 (Authentication information) — 세션 토큰
+```
+아래 인증에 체크:
 ```
 [v] 판매자의 승인된 사용 사례를 위해서만 데이터를 사용합니다.
 [v] 데이터를 제3자에게 판매하지 않습니다.
 [v] 신용도 판단·대출 목적의 데이터 사용/전송을 하지 않습니다.
 ```
+> 무료 사용자는 어떤 데이터도 수집되지 않습니다(사용 횟수는 로컬 저장).
 > direct-send는 데이터를 "저장 없이 중계"만 하므로 수집·판매에 해당하지 않습니다.
-> 심사 코멘트가 필요하면 "direct-send는 사용자가 명시적으로 켤 때만 동작하며 릴레이는 무저장"임을 기재.
+> 심사 코멘트: "로그인은 유료 구독 확인 목적의 선택 기능이며, 무료 기능은 로그인 없이 동작"임을 기재.
 
 ### 개인정보 처리방침 URL (Privacy policy URL) — **필수**
 공개 Gist로 게시 완료. 대시보드의 개인정보 처리방침 URL 란에 아래 주소를 그대로 입력하세요:
@@ -274,6 +310,10 @@ https://gist.github.com/zi-gae/2df62695588e3a6b4a70edc084676fc0
 - [ ] `pnpm --filter @html2figma/extension package`로 최신 zip 생성
 - [ ] `manifest.json` version 확인/증가 (현재 0.0.1)
 - [ ] 개인정보 처리방침을 공개 URL로 게시하고 대시보드에 입력
+- [ ] PRIVACY.md 유료화 개정본으로 Gist 갱신: `gh gist edit 2df62695588e3a6b4a70edc084676fc0 docs/PRIVACY.md`
+  (또는 랜딩 사이트 `https://<site>/privacy.html` URL 로 교체)
+- [ ] `identity` 권한 사유 입력 + 데이터 수집 공개(이메일/인증 정보) 갱신
+- [ ] `packages/extension/src/config.ts` 의 ACCOUNT_API_URL / FIGMA_CLIENT_ID / UPGRADE_URL 실제값 확인
 - [ ] 스크린샷 1장 이상(1280×800) 업로드
 - [ ] 권한 사유 전부 입력 (특히 debugger, <all_urls>)
 - [ ] 데이터 사용 인증 3개 체크

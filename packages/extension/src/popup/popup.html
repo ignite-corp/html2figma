@@ -53,6 +53,21 @@
         margin: 2px 0 0;
       }
 
+      /* ── Plan pill ── */
+      .plan-pill {
+        margin-left: auto;
+        flex-shrink: 0;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: #eef0ff;
+        color: #4c5bff;
+        white-space: nowrap;
+      }
+      .plan-pill.pro { background: #e9f9f0; color: #1e9e5a; }
+      .plan-pill.empty { background: #fdeeee; color: #e74c3c; }
+
       /* ── Content ── */
       .content {
         padding: 14px 14px 16px;
@@ -145,6 +160,59 @@
       }
       #status.success { color: #27ae60; }
       #status.error   { color: #e74c3c; }
+
+      /* ── Paywall ── */
+      .paywall {
+        background: linear-gradient(140deg, #f6f7ff 0%, #fdfdff 100%);
+        border: 1px solid #dfe3ff;
+        border-radius: 12px;
+        padding: 14px;
+        text-align: center;
+      }
+      .paywall.hidden { display: none; }
+      .paywall h2 {
+        font-size: 13px;
+        font-weight: 700;
+        margin: 0 0 4px;
+        color: #111;
+      }
+      .paywall p {
+        font-size: 11px;
+        color: #888;
+        margin: 0 0 10px;
+        line-height: 1.5;
+      }
+      .btn-upgrade {
+        width: 100%;
+        padding: 10px;
+        border: none;
+        border-radius: 10px;
+        background: linear-gradient(140deg, #4c5bff 0%, #818cff 100%);
+        color: white;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .btn-upgrade:hover:not(:disabled) { opacity: 0.9; }
+      .btn-upgrade:disabled { opacity: 0.5; cursor: default; }
+      .paywall-note {
+        font-size: 10px;
+        color: #aaa;
+        margin-top: 8px;
+      }
+      .paywall-note a, .account-line a {
+        color: #4c5bff;
+        cursor: pointer;
+        text-decoration: none;
+      }
+
+      /* ── Account ── */
+      .account-line {
+        font-size: 10px;
+        color: #aaa;
+        text-align: center;
+        min-height: 13px;
+      }
     </style>
   </head>
   <body>
@@ -155,6 +223,7 @@
         <h1>html2figma</h1>
         <p>현재 페이지를 Figma로 캡처</p>
       </div>
+      <span id="plan-pill" class="plan-pill" hidden></span>
     </div>
 
     <!-- Content -->
@@ -175,6 +244,17 @@
         <div class="bar"><span id="progress"></span></div>
         <div id="status"></div>
       </div>
+
+      <!-- Paywall (쿼터 소진 시 표시) -->
+      <div id="paywall" class="paywall hidden">
+        <h2>이번 달 무료 변환을 모두 사용했어요</h2>
+        <p>Pro로 업그레이드하면 횟수 제한 없이<br>변환할 수 있어요.</p>
+        <button id="upgrade" class="btn-upgrade">Pro 업그레이드 — 월 $9</button>
+        <div class="paywall-note">이미 구독 중이신가요? <a id="signin-paywall">Figma로 로그인</a></div>
+      </div>
+
+      <!-- Account -->
+      <div id="account-line" class="account-line"></div>
 
     </div>
 

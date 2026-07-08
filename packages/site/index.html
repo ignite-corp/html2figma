@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>html2figma — 웹페이지를 편집 가능한 Figma 디자인으로</title>
+  <meta name="description" content="크롬 익스텐션으로 웹페이지를 캡처해 편집 가능한 Figma 레이어로 변환하세요. 매달 5회 무료." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; font-family: Inter, Pretendard, -apple-system, BlinkMacSystemFont, sans-serif; color: #1a1a2e; background: #fff; line-height: 1.6; }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 0 20px; }
+    header { padding: 18px 0; border-bottom: 1px solid #f0f0f5; }
+    header .wrap { display: flex; align-items: center; gap: 10px; }
+    .logo { width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(140deg,#4c5bff,#818cff); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:11px; }
+    .brand { font-weight: 700; font-size: 15px; }
+    nav { margin-left: auto; display: flex; gap: 16px; font-size: 13px; }
+    nav a { color: #666; text-decoration: none; }
+    .hero { text-align: center; padding: 72px 0 48px; }
+    h1 { font-size: 34px; line-height: 1.3; margin: 0 0 14px; letter-spacing: -0.5px; }
+    .hero p { color: #666; font-size: 16px; margin: 0 0 28px; }
+    .cta { display: inline-block; padding: 13px 26px; border-radius: 12px; background: #4c5bff; color: #fff; font-weight: 700; text-decoration: none; font-size: 15px; }
+    .cta.secondary { background: #eef0ff; color: #4c5bff; margin-left: 10px; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 24px 0 48px; }
+    .step { background: #fafafe; border: 1px solid #eef0f7; border-radius: 14px; padding: 18px; font-size: 13px; color: #555; }
+    .step b { display: block; color: #111; margin-bottom: 6px; font-size: 14px; }
+    .pricing { padding: 24px 0 72px; text-align: center; }
+    .pricing h2 { font-size: 24px; margin-bottom: 24px; }
+    .plans { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; max-width: 560px; margin: 0 auto; text-align: left; }
+    .plan { border: 1px solid #eef0f7; border-radius: 16px; padding: 22px; }
+    .plan.pro { border-color: #c9cfff; background: linear-gradient(160deg,#f6f7ff,#fff); }
+    .plan h3 { margin: 0 0 4px; font-size: 16px; }
+    .price { font-size: 26px; font-weight: 800; margin: 8px 0 12px; }
+    .price small { font-size: 13px; color: #888; font-weight: 400; }
+    .plan ul { margin: 0; padding-left: 18px; font-size: 13px; color: #555; }
+    footer { border-top: 1px solid #f0f0f5; padding: 26px 0 40px; font-size: 12px; color: #999; }
+    footer a { color: #777; }
+    @media (max-width: 600px) { .steps, .plans { grid-template-columns: 1fr; } h1 { font-size: 26px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="logo">&lt;/&gt;</div>
+      <span class="brand">html2figma</span>
+      <nav>
+        <a href="/upgrade.html">Pro</a>
+        <a href="/terms.html">이용약관</a>
+        <a href="/privacy.html">개인정보</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero wrap">
+    <h1>웹페이지를<br />편집 가능한 Figma 디자인으로</h1>
+    <p>크롬 익스텐션으로 캡처하면, Figma 플러그인에 실제 레이어·텍스트·Auto Layout으로 도착합니다.</p>
+    <!-- TODO: 배포 후 실제 스토어/커뮤니티 URL 로 교체 -->
+    <a class="cta" href="https://chromewebstore.google.com/" target="_blank" rel="noopener">크롬 익스텐션 설치</a>
+    <a class="cta secondary" href="https://www.figma.com/community" target="_blank" rel="noopener">Figma 플러그인</a>
+  </section>
+
+  <section class="steps wrap">
+    <div class="step"><b>1. 연결</b>Figma 플러그인에서 "연결하기"를 눌러 6자리 코드를 받으세요.</div>
+    <div class="step"><b>2. 캡처</b>익스텐션에 코드를 입력하고 현재 페이지를 캡처하세요.</div>
+    <div class="step"><b>3. 편집</b>이미지가 아닌 실제 Figma 레이어로 바로 편집하세요.</div>
+  </section>
+
+  <section class="pricing wrap">
+    <h2>요금</h2>
+    <div class="plans">
+      <div class="plan">
+        <h3>무료</h3>
+        <div class="price">$0</div>
+        <ul>
+          <li>매달 5회 변환</li>
+          <li>로그인·가입 불필요</li>
+          <li>모든 변환 기능 동일</li>
+        </ul>
+      </div>
+      <div class="plan pro">
+        <h3>Pro</h3>
+        <div class="price">$9 <small>/ 월</small></div>
+        <ul>
+          <li>무제한 변환</li>
+          <li>Figma 계정으로 모든 기기에서 사용</li>
+          <li>언제든 해지 가능</li>
+        </ul>
+        <p style="margin:14px 0 0"><a class="cta" style="display:block;text-align:center" href="/upgrade.html">Pro 시작하기</a></p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      html2figma · <a href="/terms.html">이용약관</a> · <a href="/privacy.html">개인정보처리방침</a> · <a href="/refunds.html">환불정책</a><br />
+      문의: <a href="mailto:CONTACT_EMAIL_REPLACE_ME">CONTACT_EMAIL_REPLACE_ME</a> · 결제는 Merchant of Record 인 Paddle.com 이 처리합니다.
+    </div>
+  </footer>
+</body>
+</html>

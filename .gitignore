@@ -9,3 +9,7 @@ dist-test/
 *.h2f
 *.zip
 .wrangler/
+
+# wrangler 로컬 시크릿/상태
+.dev.vars
+.wrangler/

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>html2figma Pro 업그레이드</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; font-family: Inter, Pretendard, -apple-system, sans-serif; color: #1a1a2e; background: #fafafe; display: flex; min-height: 100vh; align-items: center; justify-content: center; }
+    .card { background: #fff; border: 1px solid #eef0f7; border-radius: 18px; padding: 34px; max-width: 420px; width: calc(100% - 40px); text-align: center; box-shadow: 0 10px 40px rgba(30,40,120,0.06); }
+    .logo { width: 44px; height: 44px; margin: 0 auto 14px; border-radius: 12px; background: linear-gradient(140deg,#4c5bff,#818cff); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; }
+    h1 { font-size: 20px; margin: 0 0 6px; }
+    p { color: #777; font-size: 13px; line-height: 1.6; margin: 0 0 20px; }
+    .price { font-size: 30px; font-weight: 800; margin-bottom: 18px; }
+    .price small { font-size: 14px; font-weight: 400; color: #888; }
+    button { width: 100%; padding: 13px; border: none; border-radius: 12px; background: #4c5bff; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    .warn { color: #e74c3c; font-size: 12px; margin-top: 12px; min-height: 15px; }
+    .foot { margin-top: 18px; font-size: 11px; color: #aaa; }
+    .foot a { color: #888; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">&lt;/&gt;</div>
+    <h1>html2figma Pro</h1>
+    <p>무제한 변환 · Figma 계정으로 모든 기기에서 사용 · 언제든 해지</p>
+    <div class="price">$9 <small>/ 월</small></div>
+    <button id="checkout" disabled>결제하기</button>
+    <div id="warn" class="warn"></div>
+    <div class="foot">
+      결제는 Merchant of Record 인 Paddle.com 이 안전하게 처리합니다.<br />
+      <a href="/terms.html">이용약관</a> · <a href="/refunds.html">환불정책</a>
+    </div>
+  </div>
+
+  <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
+  <script>
+    // 배포 전 채워야 하는 값 (Paddle 대시보드에서 발급)
+    var PADDLE_CLIENT_TOKEN = "REPLACE_WITH_PADDLE_CLIENT_TOKEN";
+    var PADDLE_PRICE_ID = "REPLACE_WITH_PADDLE_PRICE_ID";
+    var PADDLE_SANDBOX = true; // 라이브 전환 시 false
+
+    var btn = document.getElementById("checkout");
+    var warn = document.getElementById("warn");
+
+    // 익스텐션 팝업이 붙여준 계정 연결 토큰 (10분 만료)
+    var ct = new URLSearchParams(location.search).get("ct");
+    if (!ct) {
+      warn.textContent = "익스텐션 팝업의 ‘Pro 업그레이드’ 버튼으로 접속해 주세요 (계정 연결 정보가 없습니다).";
+    }
+
+    if (PADDLE_SANDBOX) Paddle.Environment.set("sandbox");
+    Paddle.Initialize({
+      token: PADDLE_CLIENT_TOKEN,
+      eventCallback: function (ev) {
+        if (ev.name === "checkout.completed") {
+          setTimeout(function () { location.href = "/success.html"; }, 1200);
+        }
+      },
+    });
+
+    if (ct) btn.disabled = false;
+    btn.addEventListener("click", function () {
+      Paddle.Checkout.open({
+        items: [{ priceId: PADDLE_PRICE_ID, quantity: 1 }],
+        customData: { checkoutToken: ct },
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>개인정보처리방침 — html2figma</title>
+  <style>
+    body { margin: 0; font-family: Inter, Pretendard, -apple-system, sans-serif; color: #1a1a2e; line-height: 1.7; }
+    .wrap { max-width: 680px; margin: 0 auto; padding: 48px 20px 80px; }
+    h1 { font-size: 26px; } h2 { font-size: 17px; margin-top: 32px; }
+    p, li, td, th { font-size: 14px; color: #444; }
+    table { border-collapse: collapse; width: 100%; }
+    td, th { border: 1px solid #eee; padding: 8px 10px; text-align: left; }
+    .meta { color: #999; font-size: 12px; }
+    a { color: #4c5bff; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>개인정보처리방침</h1>
+  <p class="meta">최종 수정일: 2026-07-08</p>
+
+  <h2>요약</h2>
+  <ul>
+    <li>캡처 데이터(페이지 내용)는 <b>저장하지 않습니다.</b> 릴레이 서버는 통과(중계)만 합니다.</li>
+    <li><b>무료 사용에는 계정이 필요 없으며</b>, 무료 사용자에 대해 어떤 개인정보도 수집하지 않습니다. 사용 횟수는 사용자의 브라우저 안에만 기록됩니다.</li>
+    <li><b>Pro 구독을 구매·이용할 때만</b> Figma 계정 로그인으로 최소한의 계정 정보(Figma 사용자 ID, 이메일)와 구독 상태를 수집합니다.</li>
+    <li>결제 정보(카드번호 등)는 결제 처리사 <b>Paddle</b>(Merchant of Record)이 처리하며, 당사는 결제 수단 정보에 접근하지 않습니다.</li>
+    <li>분석/트래킹/광고 식별자를 일절 사용하지 않습니다.</li>
+  </ul>
+
+  <h2>수집·처리하는 데이터</h2>
+  <table>
+    <tr><th>데이터</th><th>처리 위치</th><th>저장 여부</th></tr>
+    <tr><td>캡처 대상 페이지의 DOM·스타일·레이아웃</td><td>사용자 기기</td><td>저장 안 함</td></tr>
+    <tr><td>페어링 코드, 설정</td><td>브라우저/플러그인 로컬 저장소</td><td>로컬에만</td></tr>
+    <tr><td>무료 플랜 월간 사용 횟수</td><td>브라우저 로컬 저장소</td><td>로컬에만 (서버 전송 없음)</td></tr>
+    <tr><td>(Pro 로그인 시) Figma 사용자 ID, 이메일</td><td>당사 계정 서버(Cloudflare)</td><td>저장</td></tr>
+    <tr><td>(Pro 구독 시) 구독 상태, Paddle 고객/구독 ID</td><td>당사 계정 서버(Cloudflare)</td><td>저장</td></tr>
+  </table>
+  <p>Figma 로그인은 신원 확인 전용 권한(<code>current_user:read</code>)만 요청하며, 사용자의 Figma 파일에는 접근할 수 없습니다. 로그인 시 Figma 액세스 토큰은 신원 확인 직후 폐기됩니다.</p>
+
+  <h2>결제</h2>
+  <p>결제는 Merchant of Record 인 <a href="https://www.paddle.com" target="_blank" rel="noopener">Paddle.com</a>이 처리합니다. 당사는 Paddle 로부터 구독 상태와 고객·구독 식별자만 전달받아 Pro 자격 확인에 사용합니다.</p>
+
+  <h2>보관과 삭제</h2>
+  <p>Pro 계정 정보는 구독 자격 확인에 필요한 기간 동안 보관합니다. 삭제를 원하시면 아래 문의처로 요청해 주세요. 법적 보관 의무가 없는 한 지체 없이 삭제합니다.</p>
+
+  <h2>제3자 제공</h2>
+  <p>위에 명시한 결제 처리사(Paddle) 외에는 어떤 데이터도 제3자에게 제공·판매하지 않습니다.</p>
+
+  <h2>문의</h2>
+  <p><a href="mailto:CONTACT_EMAIL_REPLACE_ME">CONTACT_EMAIL_REPLACE_ME</a></p>
+</div>
+</body>
+</html>
