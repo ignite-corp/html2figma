@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "html2figma",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "Capture any webpage and turn it into an editable Figma design.",
+    "description": "Extension short description"
+  }
+}

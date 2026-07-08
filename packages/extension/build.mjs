@@ -35,6 +35,7 @@ await build({
 cpSync(resolve(__dirname, "manifest.json"), resolve(outdir, "manifest.json"));
 cpSync(resolve(__dirname, "src/popup/popup.html"), resolve(outdir, "popup.html"));
 cpSync(resolve(__dirname, "icons"), resolve(outdir, "icons"), { recursive: true });
+cpSync(resolve(__dirname, "_locales"), resolve(outdir, "_locales"), { recursive: true });
 
 if (forStore) {
   const manifestPath = resolve(outdir, "manifest.json");
