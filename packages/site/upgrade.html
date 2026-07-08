@@ -36,18 +36,29 @@
 
   <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
   <script>
-    // 배포 전 채워야 하는 값 (Paddle 대시보드에서 발급)
-    var PADDLE_CLIENT_TOKEN = "REPLACE_WITH_PADDLE_CLIENT_TOKEN";
-    var PADDLE_PRICE_ID = "REPLACE_WITH_PADDLE_PRICE_ID";
-    var PADDLE_SANDBOX = true; // 라이브 전환 시 false
+    // Paddle 대시보드에서 발급 (live, html2figma Pro / Pro Monthly $9)
+    var PADDLE_CLIENT_TOKEN = "live_3269b0d8ee45156a44766a69400";
+    var PADDLE_PRICE_ID = "pri_01kx07g00xndh2a9bes5wymatf";
+    var PADDLE_SANDBOX = false; // 라이브 계정 승인 완료
 
     var btn = document.getElementById("checkout");
     var warn = document.getElementById("warn");
 
     // 익스텐션 팝업이 붙여준 계정 연결 토큰 (10분 만료)
-    var ct = new URLSearchParams(location.search).get("ct");
+    var params = new URLSearchParams(location.search);
+    var ct = params.get("ct");
+    // 이벤트/프로모션 링크용 할인 코드 (예: /upgrade?dc=LAUNCH50) — 체크아웃에 자동 적용.
+    // 이벤트 링크는 ct 없이 공유되므로 localStorage에 보관했다가, 이후 익스텐션을
+    // 통해 ct와 함께 재방문했을 때 꺼내 쓴다.
+    var dc = params.get("dc");
+    try {
+      if (dc) localStorage.setItem("h2f-dc", dc);
+      else dc = localStorage.getItem("h2f-dc");
+    } catch (e) { /* 시크릿 모드 등 저장 불가 시 무시 */ }
     if (!ct) {
-      warn.textContent = "익스텐션 팝업의 ‘Pro 업그레이드’ 버튼으로 접속해 주세요 (계정 연결 정보가 없습니다).";
+      warn.textContent = dc
+        ? "할인 코드(" + dc + ")가 저장됐어요. 익스텐션 팝업의 ‘Pro 업그레이드’ 버튼으로 다시 접속하면 자동 적용됩니다."
+        : "익스텐션 팝업의 ‘Pro 업그레이드’ 버튼으로 접속해 주세요 (계정 연결 정보가 없습니다).";
     }
 
     if (PADDLE_SANDBOX) Paddle.Environment.set("sandbox");
@@ -62,10 +73,12 @@
 
     if (ct) btn.disabled = false;
     btn.addEventListener("click", function () {
-      Paddle.Checkout.open({
+      var checkout = {
         items: [{ priceId: PADDLE_PRICE_ID, quantity: 1 }],
         customData: { checkoutToken: ct },
-      });
+      };
+      if (dc) checkout.discountCode = dc;
+      Paddle.Checkout.open(checkout);
     });
   </script>
 </body>

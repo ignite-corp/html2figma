@@ -7,8 +7,8 @@
  *    (redirect URI 에 `https://<확장ID>.chromiumapp.org/` 등록 필요)
  *  - UPGRADE_URL: packages/site 배포 주소의 결제 페이지
  */
-export const ACCOUNT_API_URL = "https://html2figma-account.example.workers.dev";
-export const FIGMA_CLIENT_ID = "REPLACE_WITH_FIGMA_CLIENT_ID";
+export const ACCOUNT_API_URL = "https://html2figma-account.doscmdev.workers.dev";
+export const FIGMA_CLIENT_ID = "LaseT9vCU6GxrKbg9AirTS";
 export const UPGRADE_URL = "https://html2figma.pages.dev/upgrade";
 
 /** 무료 플랜: 월 변환 횟수 상한 */

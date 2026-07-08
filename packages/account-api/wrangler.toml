@@ -10,7 +10,7 @@ main = "src/worker.ts"
 compatibility_date = "2024-09-23"
 
 [vars]
-FIGMA_CLIENT_ID = "REPLACE_WITH_FIGMA_CLIENT_ID"
+FIGMA_CLIENT_ID = "LaseT9vCU6GxrKbg9AirTS"
 
 [[durable_objects.bindings]]
 name = "ACCOUNT"

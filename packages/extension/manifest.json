@@ -2,6 +2,7 @@
   "manifest_version": 3,
   "name": "html2figma",
   "version": "0.0.1",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3eg3r4IxRIvQ+lZlBVnMDLhzqZ73ixu/CpRiOBFfaGl7OKwN6ltq0GZBD4kQGifS8LtR/zc6i9WuU54wWvRYlWdN3dKyBiQeU2C1EVpX11g6lQFFxPmU0Wc7PXNfl0rZObdvQRvgXHjUZ+V1jCzm4DPw3ne2rquEV+yS3r4txrJw6UfMT9YykRejwysJMGuQ51tPvk/fmUn+uDWFy+v8KCx/rbi8aFyKEevVjGDx+lSZ49mlK1eBoSkrTknz4ovL/A6tCSMUC3Qh/QYgllx1YPLHfB4zcyxy80gHipoqctfR8aQxKoT4eemqGkJXANQwFQ7hz7LkOsBJAjUNSJcBhwIDAQAB",
   "description": "웹페이지를 캡처해 편집 가능한 Figma 디자인으로 변환합니다.",
   "permissions": ["debugger", "activeTab", "scripting", "storage", "downloads", "tabs", "identity"],
   "host_permissions": ["<all_urls>"],

@@ -13,3 +13,9 @@ dist-test/
 # wrangler 로컬 시크릿/상태
 .dev.vars
 .wrangler/
+
+# 익스텐션 고정 ID용 개인키 (공개키는 manifest.json에 포함, 개인키는 비공개 보관)
+packages/extension/.keys/
+
+# Playwright MCP 브라우저 아티팩트
+.playwright-mcp/
