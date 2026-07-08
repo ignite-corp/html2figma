@@ -6,7 +6,7 @@
   "scripts": {
     "build": "node build.mjs",
     "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.ui.json --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf figma-plugin"
   },
   "dependencies": {
     "@html2figma/shared": "workspace:*"

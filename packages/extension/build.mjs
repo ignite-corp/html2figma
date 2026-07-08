@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const outdir = resolve(__dirname, "dist");
+const outdir = resolve(__dirname, "chrome-extension");
 const watch = process.argv.includes("--watch");
 
 rmSync(outdir, { recursive: true, force: true });

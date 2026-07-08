@@ -1,7 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./dist",
+    "outDir": "./chrome-extension",
     "rootDir": "./src",
     "types": ["chrome"],
     "declaration": false

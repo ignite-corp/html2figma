@@ -2,8 +2,8 @@
   "name": "html2figma",
   "id": "html2figma-importer",
   "api": "1.0.0",
-  "main": "dist/main.js",
-  "ui": "dist/ui.html",
+  "main": "figma-plugin/main.js",
+  "ui": "figma-plugin/ui.html",
   "editorType": ["figma"],
   "networkAccess": {
     "allowedDomains": [

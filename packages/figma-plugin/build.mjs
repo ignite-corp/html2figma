@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const outdir = resolve(__dirname, "dist");
+const outdir = resolve(__dirname, "figma-plugin");
 
 rmSync(outdir, { recursive: true, force: true });
 mkdirSync(outdir, { recursive: true });
@@ -37,7 +37,7 @@ const html = htmlTemplate.replace(
 );
 writeFileSync(resolve(outdir, "ui.html"), html);
 
-// dist 는 자체적으로도 임포트 가능하도록 경로를 dist 기준(main.js/ui.html)으로 재작성.
+// 출력 폴더(figma-plugin/)는 자체적으로도 임포트 가능하도록 경로를 폴더 기준(main.js/ui.html)으로 재작성.
 const manifest = JSON.parse(readFileSync(resolve(__dirname, "manifest.json"), "utf8"));
 manifest.main = "main.js";
 manifest.ui = "ui.html";
