@@ -10,10 +10,15 @@ export function buildFormControl(ctx: BuildCtx, node: RawNode, ox: number, oy: n
   const type = (node.attributes["type"] ?? "text").toLowerCase();
   const isCheckbox = type === "checkbox";
   const isRadio = type === "radio";
-  if (!isCheckbox && !isRadio) return [];
+  const isRange = type === "range";
+  if (!isCheckbox && !isRadio && !isRange) return [];
 
   const layout = layoutOf(node, ox, oy);
   if (!layout) return [];
+
+  // range 슬라이더의 thumb(핸들)은 ::-webkit-slider-thumb 의사요소라 DOM 캡처에 잡히지 않는다.
+  // value/min/max 로 위치를 계산해 흰 원형 knob 을 합성한다(트랙·채움 div 는 형제로 별도 렌더).
+  if (isRange) return buildRangeThumb(ctx, node, layout);
 
   const isChecked = node.attributes["checked"] != null;
   const order = layout.order ?? 0;
@@ -93,4 +98,49 @@ export function buildFormControl(ctx: BuildCtx, node: RawNode, ox: number, oy: n
     children: sortByOrder(children),
   };
   return [frame];
+}
+
+/** range INPUT 을 흰 원형 thumb(핸들)로 합성한다. value/min/max 로 트랙 내 위치를 계산한다. */
+function buildRangeThumb(
+  ctx: BuildCtx,
+  node: RawNode,
+  layout: { x: number; y: number; width: number; height: number; order?: number }
+): H2FNode[] {
+  const num = (k: string, d: number): number => {
+    const v = parseFloat(node.attributes[k] ?? "");
+    return Number.isFinite(v) ? v : d;
+  };
+  const min = num("min", 0);
+  const max = num("max", 100);
+  const val = num("value", min);
+  const f = max > min ? Math.min(1, Math.max(0, (val - min) / (max - min))) : 0;
+
+  const d = Math.min(18, Math.max(12, Math.round(layout.height)));
+  const r = d / 2;
+  // thumb 중심이 트랙 양끝을 벗어나지 않도록 [r, width-r] 범위로 인셋한다(네이티브 동작).
+  const cx = layout.x + r + f * Math.max(0, layout.width - d);
+  const cy = layout.y + layout.height / 2;
+  const order = (layout.order ?? 0) + 2;
+
+  const white = { r: 1, g: 1, b: 1, a: 1 };
+  const styles = node.layout?.styles ?? {};
+  const border =
+    (styles["accent-color"] && styles["accent-color"] !== "auto"
+      ? parseCssColor(styles["accent-color"])
+      : null) ?? { r: 0.02, g: 0.078, b: 0.122, a: 1 };
+
+  const thumb: FrameNode = {
+    id: ctx.nextId(),
+    name: "thumb",
+    type: "frame",
+    layout: { x: cx - r, y: cy - r, width: d, height: d, order },
+    style: {
+      fills: [{ type: "solid", color: white }],
+      strokes: [{ color: border, weight: 1.5, align: "inside" }],
+      cornerRadius: { tl: r, tr: r, br: r, bl: r },
+      clipsContent: false,
+    },
+    children: [],
+  };
+  return [thumb];
 }

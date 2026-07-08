@@ -253,8 +253,18 @@ export function buildInlineText(ctx: BuildCtx, node: RawNode, ox: number, oy: nu
 }
 
 /** input/textarea 의 value 또는 placeholder 를 텍스트 노드로 합성 */
+const NON_TEXT_INPUT = new Set([
+  "range", "checkbox", "radio", "hidden", "file", "color", "image",
+]);
+
 export function buildInputText(ctx: BuildCtx, node: RawNode, ox: number, oy: number): TextNode | null {
   if (node.nodeName !== "INPUT" && node.nodeName !== "TEXTAREA") return null;
+  // range/checkbox/color 등은 value 가 화면에 보이는 텍스트가 아니므로 텍스트로 렌더하지 않는다.
+  // (range 는 슬라이더 thumb, checkbox/radio 는 체크 표시로 별도 합성됨)
+  if (node.nodeName === "INPUT") {
+    const type = (node.attributes["type"] ?? "text").toLowerCase();
+    if (NON_TEXT_INPUT.has(type)) return null;
+  }
   const value = node.attributes["value"];
   const placeholder = node.attributes["placeholder"];
   const hasValue = !!value && value.trim().length > 0;

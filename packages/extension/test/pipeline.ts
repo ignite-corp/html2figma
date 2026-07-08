@@ -341,6 +341,77 @@ assert(
   "placeholder 텍스트가 padding-left 만큼 안쪽으로 배치됨"
 );
 
+/* ---------------- range slider(input[type=range]) → thumb 합성 케이스 ---------------- */
+console.log("\nrange slider thumb:");
+const s5: string[] = [""];
+const intern5 = (s: string) => {
+  const i = s5.indexOf(s);
+  if (i >= 0) return i;
+  s5.push(s);
+  return s5.length - 1;
+};
+const styleRow5 = (map: Record<string, string>) =>
+  COMPUTED_STYLES.map((name) => intern5(map[name] ?? ""));
+
+const snapshot5: CaptureSnapshotResult = {
+  strings: s5,
+  documents: [
+    {
+      documentURL: intern5("https://r.com"),
+      title: intern5("R"),
+      nodes: {
+        parentIndex: [-1, 0, 1],
+        nodeType: [1, 1, 1],
+        nodeName: [intern5("BODY"), intern5("DIV"), intern5("INPUT")],
+        nodeValue: [intern5(""), intern5(""), intern5("")],
+        backendNodeId: [1, 2, 3],
+        attributes: [
+          [],
+          [],
+          [
+            intern5("type"), intern5("range"),
+            intern5("min"), intern5("18"),
+            intern5("max"), intern5("27"),
+            intern5("value"), intern5("18"),
+          ],
+        ],
+      },
+      layout: {
+        nodeIndex: [0, 1, 2],
+        styles: [
+          styleRow5({ display: "block" }),
+          styleRow5({ display: "block", "background-color": "rgb(218,219,220)" }),
+          styleRow5({ display: "block" }),
+        ],
+        bounds: [
+          [0, 0, 240, 60],
+          [0, 40, 220, 4],
+          [0, 31, 220, 22],
+        ],
+        text: [intern5(""), intern5(""), intern5("")],
+      },
+    },
+  ],
+} as unknown as CaptureSnapshotResult;
+
+const built5 = buildIR(parseAllDocuments(snapshot5));
+const collect5 = (n: import("@html2figma/shared").H2FNode, out: import("@html2figma/shared").H2FNode[]) => {
+  out.push(n);
+  if (n.type === "frame") for (const c of n.children) collect5(c, out);
+};
+const all5: import("@html2figma/shared").H2FNode[] = [];
+if (built5.root) collect5(built5.root, all5);
+assert(
+  !all5.some((n) => n.type === "text" && (n.characters === "18" || n.characters === "27")),
+  "range input 의 value(18) 가 텍스트로 렌더되지 않음"
+);
+const thumb = all5.find((n) => n.type === "frame" && n.name === "thumb");
+assert(!!thumb, "range input 에 thumb(핸들) 프레임이 합성됨");
+assert(
+  !!thumb && thumb.type === "frame" && thumb.layout.x === 0 && thumb.layout.width === 18,
+  "thumb 가 value=min 위치(트랙 좌측 끝)에 배치됨"
+);
+
 /* ---------------- device px → CSS px 배율 정규화 케이스 ---------------- */
 console.log("\nscale 정규화:");
 const scaled = parseAllDocuments(snapshot4, 2); // DPR 2 가정
