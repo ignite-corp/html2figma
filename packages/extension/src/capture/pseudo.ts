@@ -14,6 +14,9 @@ export interface PseudoIcon {
   bg?: string;
   /** border-radius (px) */
   radius?: number;
+  /** border 만 있는 pseudo(테두리 오버레이) 의 색/두께 */
+  borderColor?: string;
+  borderWidth?: number;
 }
 
 /**
@@ -53,6 +56,8 @@ export async function collectPseudoIcons(session: CdpSession): Promise<PseudoIco
       hostId?: string;
       bg?: string;
       radius?: number;
+      borderColor?: string;
+      borderWidth?: number;
     }[] = [];
     const els = document.querySelectorAll("*");
     const MAX = 400;
@@ -104,9 +109,12 @@ export async function collectPseudoIcons(session: CdpSession): Promise<PseudoIco
         if (cs.backgroundImage && cs.backgroundImage !== "none") url = extractUrl(cs.backgroundImage);
         if (!url) url = extractUrl(cs.content);
         // 아이콘(background-image/content url)이 없으면 눈에 보이는 단색 배경
-        // (밑줄·구분선 등)인지 확인한다. 배경도 없으면(clearfix 등) 건너뛴다.
+        // (밑줄·구분선 등) 또는 테두리(버튼 border 를 ::before content:"" 로 그리는 패턴)
+        // 인지 확인한다. 배경/테두리 모두 없으면(clearfix 등) 건너뛴다.
         let solidBg: string | null = null;
         let radius = 0;
+        let borderColor: string | null = null;
+        let borderWidth = 0;
         if (!url) {
           const bc = cs.backgroundColor;
           const am = bc && bc.match(/rgba?\(([^)]+)\)/);
@@ -115,9 +123,24 @@ export async function collectPseudoIcons(session: CdpSession): Promise<PseudoIco
             const parts = am[1].split(",").map((s) => parseFloat(s));
             if (parts.length >= 4) alpha = parts[3];
           }
-          const visible = !!bc && bc !== "transparent" && alpha > 0;
-          if (!visible) continue;
-          solidBg = bc;
+          const bgVisible = !!bc && bc !== "transparent" && alpha > 0;
+          if (bgVisible) solidBg = bc;
+          // 테두리 감지(4변 동일 가정: 대표로 top 사용)
+          const bw = parseFloat(cs.borderTopWidth) || 0;
+          const bCol = cs.borderTopColor;
+          const bam = bCol && bCol.match(/rgba?\(([^)]+)\)/);
+          let bAlpha = 1;
+          if (bam) {
+            const bparts = bam[1].split(",").map((s) => parseFloat(s));
+            if (bparts.length >= 4) bAlpha = bparts[3];
+          }
+          const borderVisible =
+            bw > 0 && cs.borderTopStyle !== "none" && bCol !== "transparent" && bAlpha > 0;
+          if (borderVisible) {
+            borderColor = bCol;
+            borderWidth = bw;
+          }
+          if (!bgVisible && !borderVisible) continue;
           radius = parseFloat(cs.borderTopLeftRadius) || 0;
         }
         const rect = el.getBoundingClientRect();
@@ -206,6 +229,8 @@ export async function collectPseudoIcons(session: CdpSession): Promise<PseudoIco
           hostId,
           bg: solidBg || undefined,
           radius: radius || undefined,
+          borderColor: borderColor || undefined,
+          borderWidth: borderWidth || undefined,
         });
       }
     }
@@ -259,17 +284,27 @@ export async function applyPseudoIcons(
     // 아이콘을 호스트 요소의 프레임 안에 넣는다(예: 버튼의 화살표). 좌표는 절대값이며
     // 렌더 시 부모 기준으로 상대화되므로 부모만 바꿔 넣으면 된다. 호스트가 없으면 루트에 얹는다.
     const target = (p.hostId && hostFrames.get(p.hostId)) || rootFrame;
-    if (!p.url && p.bg) {
-      // 아이콘이 아닌 단색 박스(밑줄·구분선 등). 프레임에 solid fill 로 렌더한다.
-      const color = parseCssColor(p.bg);
-      if (!color || color.a === 0) continue;
-      const style: H2FNode["style"] = { fills: [{ type: "solid", color }] };
+    if (!p.url && (p.bg || p.borderWidth)) {
+      // 아이콘이 아닌 단색 박스(밑줄·구분선) 또는 테두리 오버레이(::before content:"" 로
+      // 버튼 border 를 그리는 패턴). 배경 fill + border stroke 를 프레임으로 렌더한다.
+      const style: H2FNode["style"] = {};
+      if (p.bg) {
+        const color = parseCssColor(p.bg);
+        if (color && color.a > 0) style.fills = [{ type: "solid", color }];
+      }
+      if (p.borderWidth && p.borderColor) {
+        const bColor = parseCssColor(p.borderColor);
+        if (bColor && bColor.a > 0) {
+          style.strokes = [{ color: bColor, weight: p.borderWidth, align: "inside" }];
+        }
+      }
+      if (!style.fills && !style.strokes) continue;
       if (p.radius) {
         style.cornerRadius = { tl: p.radius, tr: p.radius, br: p.radius, bl: p.radius };
       }
       target.children.push({
         id: `pseudo${n}`,
-        name: "line",
+        name: style.strokes ? "border" : "line",
         type: "frame",
         layout,
         style,

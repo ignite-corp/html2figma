@@ -3,6 +3,8 @@ import { buildIR } from "../src/capture/builder.js";
 import { mapStyle } from "../src/capture/style.js";
 import { COMPUTED_STYLES } from "../src/capture/styleProps.js";
 import { parseCssColor } from "@html2figma/shared";
+import { applyPseudoIcons, type PseudoIcon } from "../src/capture/pseudo.js";
+import type { FrameNode, H2FNode } from "@html2figma/shared";
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
@@ -999,6 +1001,38 @@ assert(
 assert(
   !swiperIR.imageUrls.has("https://cpo-cdn.kia.com/public/banner/HIDDEN.png"),
   "클립 밖 숨은 슬라이드 이미지는 제거됨"
+);
+
+/* ---------------- ::before content:"" border 오버레이 → border 프레임 합성 ---------------- */
+console.log("\npseudo border overlay:");
+const pseudoRoot: FrameNode = {
+  id: "root", name: "root", type: "frame",
+  layout: { x: 0, y: 0, width: 200, height: 100 },
+  style: {}, children: [],
+};
+const btnFrame: FrameNode = {
+  id: "btn", name: "button", type: "frame",
+  layout: { x: 4, y: 4, width: 52, height: 37 },
+  style: { fills: [{ type: "solid", color: { r: 1, g: 1, b: 1, a: 1 } }] }, children: [],
+};
+pseudoRoot.children.push(btnFrame);
+const borderIcon: PseudoIcon = {
+  x: 4, y: 4, w: 52, h: 37, svg: false, hostId: "btn",
+  borderColor: "rgb(230, 231, 233)", borderWidth: 1, radius: 4,
+};
+const hostFrames = new Map<string, FrameNode>([["btn", btnFrame]]);
+await applyPseudoIcons([borderIcon], pseudoRoot, new Set<string>(), {}, hostFrames);
+const borderFrame = btnFrame.children.find((c: H2FNode) => c.type === "frame" && c.name === "border");
+assert(!!borderFrame, "border-only ::before 가 border 프레임으로 합성됨");
+assert(
+  !!borderFrame && borderFrame.type === "frame" &&
+    !!borderFrame.style.strokes && borderFrame.style.strokes[0].weight === 1,
+  "border 프레임에 stroke(weight 1) 가 적용됨"
+);
+assert(
+  !!borderFrame && borderFrame.type === "frame" &&
+    !!borderFrame.style.cornerRadius && borderFrame.style.cornerRadius.tl === 4,
+  "border 프레임에 cornerRadius(4) 가 적용됨"
 );
 
 console.log(failures === 0 ? "\n✅ 모든 테스트 통과" : `\n❌ ${failures}개 실패`);
