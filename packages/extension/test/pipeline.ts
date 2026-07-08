@@ -414,6 +414,71 @@ assert(
   "thumb 가 value=min 위치(트랙 좌측 끝)에 배치됨"
 );
 
+/* ---------------- 커스텀 라디오(appearance:none) → 네이티브 링 합성 안 함 ---------------- */
+console.log("\ncustom radio (appearance:none):");
+const buildRadioSnapshot = (map: Record<string, string>): CaptureSnapshotResult => {
+  const ss: string[] = [""];
+  const it = (s: string) => {
+    const i = ss.indexOf(s);
+    if (i >= 0) return i;
+    ss.push(s);
+    return ss.length - 1;
+  };
+  const row = (m: Record<string, string>) => COMPUTED_STYLES.map((name) => it(m[name] ?? ""));
+  return {
+    strings: ss,
+    documents: [
+      {
+        documentURL: it("https://x.com"),
+        title: it("X"),
+        nodes: {
+          parentIndex: [-1, 0],
+          nodeType: [1, 1],
+          nodeName: [it("BODY"), it("INPUT")],
+          nodeValue: [it(""), it("")],
+          backendNodeId: [1, 2],
+          attributes: [[], [it("type"), it("radio"), it("checked"), it("")]],
+        },
+        layout: {
+          nodeIndex: [0, 1],
+          styles: [row({ display: "block" }), row(map)],
+          bounds: [
+            [0, 0, 240, 60],
+            [10, 10, 24, 24],
+          ],
+          text: [it(""), it("")],
+        },
+      },
+    ],
+  } as unknown as CaptureSnapshotResult;
+};
+const collectAll = (n: import("@html2figma/shared").H2FNode, out: import("@html2figma/shared").H2FNode[]) => {
+  out.push(n);
+  if (n.type === "frame") for (const c of n.children) collectAll(c, out);
+};
+
+const customRadio = buildIR(
+  parseAllDocuments(
+    buildRadioSnapshot({ display: "block", appearance: "none", color: "rgb(5,20,31)" })
+  )
+);
+const customNodes: import("@html2figma/shared").H2FNode[] = [];
+if (customRadio.root) collectAll(customRadio.root, customNodes);
+assert(
+  !customNodes.some((n) => n.type === "frame" && n.name === "radio"),
+  "appearance:none 커스텀 라디오는 네이티브 'radio' 링 프레임을 합성하지 않음(검은 테두리 방지)"
+);
+
+const nativeRadio = buildIR(
+  parseAllDocuments(buildRadioSnapshot({ display: "block", color: "rgb(5,20,31)" }))
+);
+const nativeNodes: import("@html2figma/shared").H2FNode[] = [];
+if (nativeRadio.root) collectAll(nativeRadio.root, nativeNodes);
+assert(
+  nativeNodes.some((n) => n.type === "frame" && n.name === "radio"),
+  "appearance 미지정 네이티브 라디오는 기존대로 'radio' 프레임을 합성함"
+);
+
 /* ---------------- device px → CSS px 배율 정규화 케이스 ---------------- */
 console.log("\nscale 정규화:");
 const scaled = parseAllDocuments(snapshot4, 2); // DPR 2 가정

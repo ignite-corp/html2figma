@@ -20,6 +20,14 @@ export function buildFormControl(ctx: BuildCtx, node: RawNode, ox: number, oy: n
   // value/min/max 로 위치를 계산해 흰 원형 knob 을 합성한다(트랙·채움 div 는 형제로 별도 렌더).
   if (isRange) return buildRangeThumb(ctx, node, layout);
 
+  // appearance:none 은 커스텀 스타일드 컨트롤로, 브라우저가 네이티브 외형(원형 테두리 등)을
+  // 그리지 않는다. 실제 외형은 요소 자신의 배경/테두리나 ::before SVG 로 그려지므로 여기서
+  // 네이티브 링을 합성하면 원본에 없는 검은 테두리가 생긴다. 합성을 건너뛰고 일반 프레임으로
+  // 빌드되게 한다(자신의 CSS 배경/테두리 + 의사요소 아이콘이 실제 모습을 표현).
+  const csStyles = node.layout?.styles ?? {};
+  const appearance = (csStyles["appearance"] ?? csStyles["-webkit-appearance"] ?? "").toLowerCase();
+  if (appearance === "none") return [];
+
   const isChecked = node.attributes["checked"] != null;
   const order = layout.order ?? 0;
   const size = Math.min(layout.width, layout.height);
