@@ -35,7 +35,7 @@ pnpm --filter @html2figma/extension package
 
 ### 준비 (이미 완료)
 - 아이콘 128×128 (`packages/figma-plugin/icon.png`) — Publish 모달에서 직접 업로드(manifest.json에는 넣지 않음)
-- 커버 이미지 1920×960 (`docs/store-assets/figma-cover-1920x960.jpg`)
+- 커버 이미지 1920×1080 (`docs/store-assets/figma-cover-1920x1080.jpg`)
 - 이름/태그/설명(한/영) — `docs/FIGMA_LISTING.md`에 복사해 넣을 수 있는 형태로 정리됨
 
 ### 등록

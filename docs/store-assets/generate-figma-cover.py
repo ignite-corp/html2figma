@@ -5,7 +5,8 @@ FONT = "/System/Library/Fonts/AppleSDGothicNeo.ttc"
 ICON = "packages/extension/icons/icon-128.png"
 UI_SHOT = "docs/store-assets/raw-plugin-ui-2.png"
 OUT = "docs/store-assets"
-W, H = 1920, 960
+W, H = 1920, 1080
+OFF_Y = 60  # 기존 1920x960 레이아웃을 세로 중앙 유지하며 1080 높이로 확장
 
 
 def font(sz):
@@ -59,12 +60,12 @@ d = ImageDraw.Draw(im)
 
 # brand tag (icon + wordmark) top-left
 icon = Image.open(ICON).convert("RGBA").resize((72, 72), Image.LANCZOS)
-im.paste(icon, (140, 108), icon)
-dtext(d, (228, 128), "html2figma", font(42), (40, 34, 120), bold=1)
+im.paste(icon, (140, 108 + OFF_Y), icon)
+dtext(d, (228, 128 + OFF_Y), "html2figma", font(42), (40, 34, 120), bold=1)
 
 headline = "웹페이지를 캡처해\n편집 가능한 Figma로"
-dtext(d, (140, 340), headline, font(78), (26, 23, 66), bold=1, spacing=16)
-hb = d.multiline_textbbox((140, 340), headline, font=font(78), spacing=16)
+dtext(d, (140, 340 + OFF_Y), headline, font(78), (26, 23, 66), bold=1, spacing=16)
+hb = d.multiline_textbbox((140, 340 + OFF_Y), headline, font=font(78), spacing=16)
 y = hb[3] + 40
 sub = "레이아웃 · 텍스트 · 이미지 · SVG를 그대로 재현합니다.\nhtml2figma 크롬 익스텐션에서 보낸 캡처를 이 플러그인이 바로 그려줍니다."
 dtext(d, (140, y), sub, font(30), (68, 72, 118), spacing=13)
@@ -89,5 +90,5 @@ sh, pad = rounded_shadow((cw, ch), 24)
 im.alpha_composite(sh, (px - pad, py - pad + 8))
 im.alpha_composite(card, (px, py))
 
-im.convert("RGB").save(os.path.join(OUT, "figma-cover-1920x960.jpg"), quality=95)
-print("wrote figma-cover-1920x960.jpg", im.size)
+im.convert("RGB").save(os.path.join(OUT, "figma-cover-1920x1080.jpg"), quality=95)
+print("wrote figma-cover-1920x1080.jpg", im.size)
