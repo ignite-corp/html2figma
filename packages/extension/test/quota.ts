@@ -2,7 +2,7 @@
  * 무료 쿼터 순수 로직 테스트 (chrome API 불필요).
  * 실행: pnpm --filter @html2figma/extension test
  */
-import { currentMonthUTC, resolveQuota } from "../src/quota.js";
+import { currentMonthUTC, resolveQuota, resolveMergedQuota } from "../src/quota.js";
 
 let failures = 0;
 function assert(cond: boolean, name: string) {
@@ -38,6 +38,34 @@ assert(rollover.used === 0 && rollover.remaining === 5, "월 바뀌면 리셋 (�
 
 const negative = resolveQuota({ month: "2026-07", count: -2 }, "2026-07");
 assert(negative.used === 0 && negative.remaining === 5, "음수 저장값 방어");
+
+// sync/local 병합 — 사용량이 큰 쪽 채택
+const mSyncWins = resolveMergedQuota(
+  { month: "2026-07", count: 4 },
+  { month: "2026-07", count: 2 },
+  "2026-07"
+);
+assert(mSyncWins.used === 4, "병합: sync가 크면 sync 채택");
+
+const mLocalWins = resolveMergedQuota(
+  { month: "2026-07", count: 1 },
+  { month: "2026-07", count: 3 },
+  "2026-07"
+);
+assert(mLocalWins.used === 3, "병합: local이 크면 local 채택 (구버전 마이그레이션)");
+
+const mSyncMissing = resolveMergedQuota(undefined, { month: "2026-07", count: 5 }, "2026-07");
+assert(mSyncMissing.used === 5 && mSyncMissing.remaining === 0, "병합: sync 없음 → local 값 사용");
+
+const mStaleSync = resolveMergedQuota(
+  { month: "2026-06", count: 5 },
+  { month: "2026-07", count: 2 },
+  "2026-07"
+);
+assert(mStaleSync.used === 2, "병합: 전월 sync는 무시하고 이번 달 local 채택");
+
+const mBothMissing = resolveMergedQuota(undefined, undefined, "2026-07");
+assert(mBothMissing.used === 0 && mBothMissing.remaining === 5, "병합: 둘 다 없음 → 5회");
 
 if (failures > 0) {
   console.error(`\n${failures}개 실패`);
