@@ -53,9 +53,8 @@ html2figma는 **html2figma 크롬 익스텐션**이 캡처한 웹페이지를 �
 
 **이렇게 동작합니다**
 1. Chrome에 html2figma 익스텐션을 설치하고 캡처할 페이지에서 아이콘을 클릭합니다.
-2. 이 플러그인을 Figma에서 열고 표시된 6자리 코드를 익스텐션에 입력합니다(direct-send).
-   또는 익스텐션에서 받은 .h2f 파일을 드롭하거나 클립보드 내용을 붙여넣어도 됩니다.
-3. 페이지가 편집 가능한 Figma 디자인으로 즉시 렌더링됩니다.
+2. 이 플러그인을 Figma에서 열고 "연결하기"를 눌러 표시된 6자리 코드를 익스텐션에 입력합니다.
+3. 익스텐션이 캡처를 전송하면 페이지가 편집 가능한 Figma 디자인으로 즉시 렌더링됩니다.
 
 **무엇을 재현하나요**
 - 레이아웃(정확한 위치·크기), 텍스트(폰트·두께·색·정렬)
@@ -69,10 +68,8 @@ html2figma는 **html2figma 크롬 익스텐션**이 캡처한 웹페이지를 �
 - Auto Layout 자동 구성
 - Local styles(색상/텍스트 스타일) 자동 생성
 
-**전달 방식 3가지**
-- direct-send: 6자리 페어링 코드로 익스텐션 → 플러그인 즉시 전송
-- .h2f 파일을 플러그인 창에 드롭
-- 클립보드 복사 후 플러그인에 붙여넣기
+**전달 방식**
+- direct-send: 6자리 페어링 코드로 익스텐션 → 플러그인 즉시 전송(현재 유일한 전달 방식)
 
 **필요한 것**: [html2figma Chrome 익스텐션](https://html2figma.pages.dev) (별도 설치 필요).
 이 플러그인은 익스텐션 없이 단독으로는 웹페이지를 캡처하지 못합니다.
@@ -92,10 +89,10 @@ colors, copy and layout right inside Figma.
 **How it works**
 1. Install the html2figma Chrome extension and click its icon on the page you
    want to capture.
-2. Open this plugin in Figma and enter the 6-digit code it shows into the
-   extension (direct-send). You can also drop a .h2f file the extension
-   produced, or paste it from your clipboard.
-3. The page renders instantly as an editable Figma design.
+2. Open this plugin in Figma and click "Connect" to get a 6-digit code, then
+   enter it into the extension.
+3. Once the extension sends the capture, the page renders instantly as an
+   editable Figma design.
 
 **What it reproduces**
 - Layout (exact position & size), text (font, weight, color, alignment)
@@ -109,10 +106,9 @@ colors, copy and layout right inside Figma.
 - Auto Layout generation
 - Local styles (color / text) generation
 
-**Three delivery methods**
+**Delivery method**
 - direct-send: instant extension → plugin transfer via a 6-digit pairing code
-- Drop a .h2f file into the plugin window
-- Copy to clipboard, then paste into the plugin
+  (the only delivery method right now)
 
 **Requires**: the [html2figma Chrome extension](https://html2figma.pages.dev)
 (installed separately). This plugin cannot capture web pages on its own.
@@ -129,12 +125,15 @@ immediately), over TLS (wss://). See the privacy policy for details.
 | 자산 | 규격 | 상태 |
 |---|---|---|
 | 플러그인 아이콘 | 128×128 PNG | 준비됨 — `packages/figma-plugin/icon.png` (크롬 익스텐션과 동일한 `</>` 브랜드 마크). Publish 모달의 아이콘 업로드란에 직접 업로드. **manifest.json에는 `icon` 필드를 넣지 않는다** — 클래식 플러그인 매니페스트 스키마가 이 필드를 허용하지 않아 "unexpected extra property" 에러가 난다(위젯 매니페스트에만 있는 필드). |
-| 커버 이미지 | 1920×1080 | 준비됨 — `docs/store-assets/figma-cover-1920x1080.jpg` |
+| 썸네일(Thumbnail) | 1920×1080 | 준비됨 — `docs/store-assets/figma-cover-1920x1080.jpg` |
+| 캐러셀 이미지 (선택, 최대 9장) | 1920×1080 권장 | 3장 준비됨 — `figma-carousel-1.jpg`(연결하기) · `figma-carousel-2.jpg`(페어링 코드) · `figma-carousel-3.jpg`(연결됨·렌더) |
 
-> 커버 이미지는 실제 플러그인 UI(페어링 코드 화면)를 라이브 캡처해 합성했습니다.
-> 재생성: `python3 docs/store-assets/generate-figma-cover.py` (Pillow 필요,
-> 소스 스크린샷은 `docs/store-assets/raw-plugin-ui-2.png`). UI가 바뀌면 플러그인을
-> 빌드한 뒤 `figma-plugin/figma-plugin/ui.html`을 로컬 서버로 띄워 재캡처하세요.
+> 모두 실제 플러그인 UI를 라이브 캡처해 합성했습니다(마케팅 목업 아님 — 존재하지 않는 기능을
+> 보여주지 않도록 실제 화면만 사용). 재생성:
+> `python3 docs/store-assets/generate-figma-cover.py`, `generate-figma-carousel.py` (Pillow 필요).
+> 소스 스크린샷: `raw-plugin-full.png`(연결 전), `raw-plugin-ui-2.png`(코드 표시),
+> `raw-plugin-connected.png`(연결됨, DOM 조작으로 재현). UI가 바뀌면 플러그인을 빌드한 뒤
+> `figma-plugin/figma-plugin/ui.html`을 로컬 서버로 띄워 재캡처하세요.
 
 ---
 
@@ -142,6 +141,7 @@ immediately), over TLS (wss://). See the privacy policy for details.
 - [ ] `pnpm --filter @html2figma/figma-plugin build`로 최신 빌드 확인
 - [ ] `manifest.json`의 `networkAccess.allowedDomains`에 실제 공개 릴레이 도메인 포함 확인
 - [ ] Figma 데스크톱에서 플러그인 실행 → 우클릭 → Publish
-- [ ] 이름/태그/설명(한국어) 입력, 아이콘(`icon.png`)·커버 이미지(`figma-cover-1920x1080.jpg`) 업로드
+- [ ] 이름/태그/설명 입력, 아이콘(`icon.png`)·썸네일(`figma-cover-1920x1080.jpg`) 업로드
+- [ ] (선택) 캐러셀에 `figma-carousel-1~3.jpg` 업로드
 - [ ] 지원 채널 URL 입력
 - [ ] 제출 → 심사 대기 (Figma Community 심사는 보통 크롬 웹스토어보다 짧지만 수일 소요될 수 있음)

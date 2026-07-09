@@ -74,7 +74,7 @@ sb = d.multiline_textbbox((140, y), sub, font=font(30), spacing=13)
 cy = sb[3] + 46
 cx = 140
 cf = font(27)
-for c in ["6자리 페어링 코드", ".h2f 드롭 · 붙여넣기", "Auto Layout", "Local styles"]:
+for c in ["6자리 페어링 코드", "실시간 direct-send", "Auto Layout", "Local styles"]:
     tb = d.textbbox((0, 0), c, font=cf)
     cw = tb[2] - tb[0] + 44
     d.rounded_rectangle([cx, cy, cx + cw, cy + 54], radius=27, fill=(255, 255, 255, 235))
