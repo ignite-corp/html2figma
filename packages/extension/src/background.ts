@@ -1,6 +1,7 @@
 import { capturePage } from "./capture/index.js";
 import { getRelayUrl, sendToRelay } from "./bridge.js";
 import { isPro } from "./account.js";
+import { INTERNAL_BUILD } from "./config.js";
 import { consumeQuota, getQuota } from "./quota.js";
 import type { BackgroundToPopup, PopupToBackground } from "./messages.js";
 
@@ -28,8 +29,8 @@ chrome.runtime.onConnect.addListener((port) => {
 
     try {
       if (msg.kind === "capture") {
-        // 과금 게이트: Pro 는 무제한, 무료는 월 5회. 쿼터 소진 시 캡처를 시작하지 않는다.
-        const pro = await isPro();
+        // 과금 게이트: 사내 빌드·Pro 는 무제한, 무료는 월 5회. 쿼터 소진 시 캡처를 시작하지 않는다.
+        const pro = INTERNAL_BUILD || (await isPro());
         if (!pro && (await getQuota()).remaining <= 0) {
           post({
             kind: "error",

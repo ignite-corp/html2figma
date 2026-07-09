@@ -3,6 +3,7 @@ dist/
 dist-test/
 # 크롬 익스텐션 / 피그마 플러그인 빌드 출력(각각 폴더명으로 구분). 소스 디렉터리와 겹치지 않도록 경로를 고정한다.
 /packages/extension/chrome-extension/
+/packages/extension/chrome-extension-internal/
 /packages/figma-plugin/figma-plugin/
 *.log
 .DS_Store

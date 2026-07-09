@@ -6,9 +6,10 @@
   "scripts": {
     "build": "node build.mjs",
     "package": "node build.mjs --store && cd chrome-extension && zip -qr ../html2figma-extension.zip . && cd .. && echo 'Chrome Web Store 업로드용 → packages/extension/html2figma-extension.zip'",
+    "package:internal": "node build.mjs --internal && cd chrome-extension-internal && zip -qr ../html2figma-extension-internal.zip . && cd .. && echo '사내 배포용 (무료 무제한) → packages/extension/html2figma-extension-internal.zip'",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "esbuild test/pipeline.ts --bundle --platform=node --format=esm --outfile=dist-test/pipeline.mjs && node dist-test/pipeline.mjs && esbuild test/quota.ts --bundle --platform=node --format=esm --outfile=dist-test/quota.mjs && node dist-test/quota.mjs",
-    "clean": "rm -rf chrome-extension dist-test html2figma-extension.zip"
+    "clean": "rm -rf chrome-extension chrome-extension-internal dist-test html2figma-extension.zip html2figma-extension-internal.zip"
   },
   "dependencies": {
     "@html2figma/shared": "workspace:*"

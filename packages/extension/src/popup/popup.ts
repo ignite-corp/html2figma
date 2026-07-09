@@ -2,7 +2,7 @@ import { normalizeCode } from "@html2figma/shared";
 import type { BackgroundToPopup, CaptureRequest } from "../messages.js";
 import { getQuota } from "../quota.js";
 import { fetchStatus, getAccount, signIn, signOut } from "../account.js";
-import { UPGRADE_URL } from "../config.js";
+import { INTERNAL_BUILD, UPGRADE_URL } from "../config.js";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -26,6 +26,7 @@ function applyCaptureEnabled() {
 }
 
 function renderPlan(plan: "free" | "pro", remaining: number) {
+  if (INTERNAL_BUILD) return; // 사내 빌드는 플랜 개념이 없다 — "사내용" 배지 고정
   planPill.hidden = false;
   if (plan === "pro") {
     planPill.textContent = "Pro ✓";
@@ -127,7 +128,16 @@ chrome.storage.local.get("bridgeCode").then((s) => {
   }
 });
 
-void refreshPlanUI();
+if (INTERNAL_BUILD) {
+  // 사내 배포: 쿼터/결제/로그인 없이 무제한 사용
+  planPill.hidden = false;
+  planPill.textContent = "사내용";
+  planPill.className = "plan-pill pro";
+  quotaOk = true;
+  applyCaptureEnabled();
+} else {
+  void refreshPlanUI();
+}
 
 codeEl.addEventListener("input", () => {
   codeEl.value = normalizeCode(codeEl.value).slice(0, 6);
