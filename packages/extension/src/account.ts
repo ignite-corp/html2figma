@@ -1,13 +1,13 @@
 /**
- * Figma OAuth 계정 — Pro 구독 확인용.
+ * Google OAuth 계정 — Pro 구독 확인용.
  *
  * 무료 사용에는 로그인이 필요 없다. 업그레이드(결제)와 다른 기기에서의
- * Pro 활성화 시에만 Figma 로그인(scope: current_user:read, 신원만)을 요구한다.
+ * Pro 활성화 시에만 Google 로그인(scope: openid email profile, 신원만)을 요구한다.
  *
  * authorization-code 교환은 account-api Worker 가 수행한다(client secret 은
  * 서버에만 존재). 익스텐션은 Worker 가 발급한 자체 세션 토큰만 보관한다.
  */
-import { ACCOUNT_API_URL, FIGMA_CLIENT_ID, PRO_OFFLINE_GRACE_MS } from "./config.js";
+import { ACCOUNT_API_URL, GOOGLE_CLIENT_ID, PRO_OFFLINE_GRACE_MS } from "./config.js";
 
 const STORAGE_KEY = "account";
 
@@ -65,7 +65,7 @@ async function sha256base64url(text: string): Promise<string> {
 }
 
 /**
- * Figma 로그인. 성공 시 세션을 저장하고 계정 상태를 반환한다.
+ * Google 로그인. 성공 시 세션을 저장하고 계정 상태를 반환한다.
  * 사용자가 창을 닫는 등 취소하면 예외를 던진다.
  */
 export async function signIn(): Promise<AccountStatus> {
@@ -75,12 +75,14 @@ export async function signIn(): Promise<AccountStatus> {
   const challenge = await sha256base64url(verifier);
 
   const authUrl =
-    "https://www.figma.com/oauth" +
-    `?client_id=${encodeURIComponent(FIGMA_CLIENT_ID)}` +
+    "https://accounts.google.com/o/oauth2/v2/auth" +
+    `?client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}` +
     `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    "&scope=current_user:read" +
+    "&scope=" +
+    encodeURIComponent("openid email profile") +
     `&state=${state}` +
     "&response_type=code" +
+    "&prompt=select_account" +
     `&code_challenge=${challenge}` +
     "&code_challenge_method=S256";
 

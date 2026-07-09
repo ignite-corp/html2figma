@@ -68,13 +68,13 @@ Figma 안에서 색상, 글자, 레이아웃을 바로 수정할 수 있습니�
 
 ■ 요금
 • 무료: 매달 5회 변환 (가입·로그인 불필요)
-• Pro: 월 $9 — 무제한 변환, Figma 계정 로그인으로 모든 기기에서 사용, 언제든 해지
+• Pro: 월 $9 — 무제한 변환, Google 계정 로그인으로 모든 기기에서 사용, 언제든 해지
 • 결제는 Paddle(Merchant of Record)이 안전하게 처리합니다.
 
 ■ 개인정보
 • 무료 사용자의 개인정보는 수집하지 않으며, 사용 횟수는 브라우저 안에만 기록됩니다.
-• Pro 구독 시에만 Figma 로그인으로 최소 정보(Figma 사용자 ID·이메일)와 구독 상태를 저장합니다.
-  Figma 로그인은 신원 확인 전용 권한만 사용하며 Figma 파일에는 접근하지 않습니다.
+• Pro 구독 시에만 Google 로그인으로 최소 정보(Google 사용자 ID·이메일)와 구독 상태를 저장합니다.
+  Google 로그인은 신원 확인 전용 범위(openid email profile)만 사용합니다.
 • 분석/트래킹/광고 식별자를 사용하지 않습니다. 캡처 데이터는 기본적으로 사용자의 기기 안에서만 처리됩니다.
 • direct-send를 켠 경우에만 데이터가 릴레이 서버를 "통과"하며(저장하지 않고 즉시 중계 후 폐기),
   페어링 코드로 연결된 당사자끼리만 주고받습니다. 전송 구간은 TLS(wss://)로 보호됩니다.
@@ -124,7 +124,7 @@ so you can tweak colors, copy and layout right inside Figma.
 ■ Privacy
 • No personal data is collected for free users; usage counts stay in your browser.
 • Only when you subscribe to Pro do we store minimal account info (Figma user ID,
-  email) and subscription status via Figma sign-in. The sign-in uses an
+  email) and subscription status via Google sign-in. The sign-in uses an
   identity-only scope and cannot access your Figma files.
 • No analytics/tracking/ad IDs. Capture data is processed on your device by default.
 • Only when you enable direct-send does data PASS THROUGH a relay (never stored;
@@ -227,7 +227,7 @@ file name.
 
 - **identity**
 ```
-Pro 구독 구매·확인 시 Figma 계정 OAuth 로그인 창(chrome.identity.launchWebAuthFlow)을
+Pro 구독 구매·확인 시 Google 계정 OAuth 로그인 창(chrome.identity.launchWebAuthFlow)을
 열기 위해 필요합니다. 무료 사용에는 로그인이 필요 없으며, 로그인은 사용자가
 업그레이드/로그인 버튼을 누를 때만 실행됩니다.
 ```
@@ -260,7 +260,7 @@ is required. Access is only exercised when the user explicitly triggers a captur
 데이터 유형 선택 화면에서 다음을 선택합니다 (Pro 로그인 기능 추가로 변경됨):
 ```
 [v] 개인 식별 정보 (Personally identifiable information) — 이메일 주소
-    (Pro 구독자의 Figma 로그인 시에만, 구독 자격 확인 목적)
+    (Pro 구독자의 Google 로그인 시에만, 구독 자격 확인 목적)
 [v] 인증 정보 (Authentication information) — 세션 토큰
 ```
 아래 인증에 체크:

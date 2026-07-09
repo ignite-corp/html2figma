@@ -3,12 +3,13 @@
  *
  * 배포 전 채워야 하는 값:
  *  - ACCOUNT_API_URL: packages/account-api 를 `wrangler deploy` 한 뒤 발급되는 Worker URL
- *  - FIGMA_CLIENT_ID: developers.figma.com 에서 OAuth 앱 등록 후 발급
- *    (redirect URI 에 `https://<확장ID>.chromiumapp.org/` 등록 필요)
+ *  - GOOGLE_CLIENT_ID: Google Cloud 콘솔에서 OAuth 웹 클라이언트 등록 후 발급
+ *    (승인된 리디렉션 URI 에 `https://<확장ID>.chromiumapp.org/` 등록 필요)
  *  - UPGRADE_URL: packages/site 배포 주소의 결제 페이지
  */
 export const ACCOUNT_API_URL = "https://html2figma-account.doscmdev.workers.dev";
-export const FIGMA_CLIENT_ID = "LaseT9vCU6GxrKbg9AirTS";
+export const GOOGLE_CLIENT_ID =
+  "58872917568-mg7vvbht3ca7rci5slen410q0np29eus.apps.googleusercontent.com";
 export const UPGRADE_URL = "https://html2figma.pages.dev/upgrade";
 
 /** 무료 플랜: 월 변환 횟수 상한 */

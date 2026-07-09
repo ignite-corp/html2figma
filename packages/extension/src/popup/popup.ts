@@ -55,7 +55,7 @@ async function renderAccountLine() {
     accountLine.append(out);
   } else {
     const link = document.createElement("a");
-    link.textContent = "Pro 구독 중이신가요? Figma로 로그인";
+    link.textContent = "Pro 구독 중이신가요? Google로 로그인";
     link.addEventListener("click", () => void handleSignIn());
     accountLine.append(link);
   }
@@ -79,12 +79,12 @@ async function refreshPlanUI() {
 
 async function handleSignIn(): Promise<void> {
   try {
-    setStatus("Figma 로그인 중…");
+    setStatus("Google 로그인 중…");
     const result = await signIn();
     if (result.plan === "pro") {
       setStatus("Pro 구독이 활성화됐어요 ✓", "success");
     } else {
-      setStatus("이 Figma 계정에 활성 구독이 없어요.", "error");
+      setStatus("이 Google 계정에 활성 구독이 없어요.", "error");
     }
     await refreshPlanUI();
   } catch (e) {
@@ -95,7 +95,7 @@ async function handleSignIn(): Promise<void> {
 upgradeBtn.addEventListener("click", async () => {
   upgradeBtn.disabled = true;
   try {
-    setStatus("Figma 로그인 중…");
+    setStatus("Google 로그인 중…");
     const result = await signIn();
     if (result.plan === "pro") {
       setStatus("이미 Pro 구독 중이에요 ✓", "success");

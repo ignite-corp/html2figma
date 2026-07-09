@@ -2,9 +2,9 @@
  * html2figma 계정/구독 API — Cloudflare Workers + SQLite Durable Object.
  *
  * 역할:
- *  - Figma OAuth code 교환 (client secret 은 여기에만 존재) → 자체 세션 토큰 발급
+ *  - Google OAuth code 교환 (client secret 은 여기에만 존재) → 자체 세션 토큰 발급
  *  - 구독 상태 조회 (GET /me)
- *  - Paddle 웹훅 수신 → 구독을 Figma 계정에 연결/동기화
+ *  - Paddle 웹훅 수신 → 구독을 사용자 계정(Google sub)에 연결/동기화
  *
  * 무료 쿼터는 클라이언트(익스텐션)가 관리하므로 이 서버는 유료 사용자
  * (로그인한 사용자)의 최소 정보만 저장한다. 캡처 데이터는 다루지 않는다.
@@ -16,8 +16,8 @@ import { parseSubscriptionEvent, verifyPaddleSignature } from "./paddle.js";
 
 export interface Env {
   ACCOUNT: DurableObjectNamespace;
-  FIGMA_CLIENT_ID: string;
-  FIGMA_CLIENT_SECRET: string;
+  GOOGLE_CLIENT_ID: string;
+  GOOGLE_CLIENT_SECRET: string;
   PADDLE_WEBHOOK_SECRET: string;
   SESSION_SIGNING_KEY: string;
 }
@@ -39,7 +39,7 @@ function json(body: unknown, status = 200): Response {
 }
 
 interface UserRow extends Record<string, SqlStorageValue> {
-  figma_user_id: string;
+  user_id: string;
   email: string | null;
   paddle_customer_id: string | null;
   paddle_subscription_id: string | null;
@@ -53,7 +53,7 @@ export class AccountDO implements DurableObject {
     this.sql = state.storage.sql;
     this.sql.exec(`
       CREATE TABLE IF NOT EXISTS users (
-        figma_user_id TEXT PRIMARY KEY,
+        user_id TEXT PRIMARY KEY,
         email TEXT,
         paddle_customer_id TEXT,
         paddle_subscription_id TEXT UNIQUE,
@@ -66,6 +66,13 @@ export class AccountDO implements DurableObject {
         received_at INTEGER NOT NULL
       );
     `);
+    // Figma → Google 전환: 기존에 배포된 테이블의 컬럼명을 1회 이관한다.
+    // 이미 이관됐거나 신규 생성된 경우 컬럼이 없어 예외가 나므로 무시한다.
+    try {
+      this.sql.exec("ALTER TABLE users RENAME COLUMN figma_user_id TO user_id");
+    } catch {
+      /* already migrated or fresh table */
+    }
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -87,7 +94,7 @@ export class AccountDO implements DurableObject {
     }
   }
 
-  /* ---------------- Figma OAuth ---------------- */
+  /* ---------------- Google OAuth ---------------- */
 
   private async authCallback(request: Request): Promise<Response> {
     const body = (await request.json()) as {
@@ -97,44 +104,42 @@ export class AccountDO implements DurableObject {
     };
     if (!body.code || !body.redirectUri) return json({ error: "bad request" }, 400);
 
-    // 1) code → access token (PKCE + client secret)
-    const basic = btoa(`${this.env.FIGMA_CLIENT_ID}:${this.env.FIGMA_CLIENT_SECRET}`);
+    // 1) code → tokens (PKCE + client secret). Google 은 client_id/secret 을 폼으로 받는다.
     const form = new URLSearchParams({
+      client_id: this.env.GOOGLE_CLIENT_ID,
+      client_secret: this.env.GOOGLE_CLIENT_SECRET,
       redirect_uri: body.redirectUri,
       code: body.code,
       grant_type: "authorization_code",
     });
     if (body.verifier) form.set("code_verifier", body.verifier);
 
-    const tokenRes = await fetch("https://api.figma.com/v1/oauth/token", {
+    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
-      headers: {
-        authorization: `Basic ${basic}`,
-        "content-type": "application/x-www-form-urlencoded",
-      },
+      headers: { "content-type": "application/x-www-form-urlencoded" },
       body: form.toString(),
     });
     if (!tokenRes.ok) return json({ error: "oauth exchange failed" }, 401);
     const token = (await tokenRes.json()) as { access_token: string };
 
-    // 2) 신원 조회 후 Figma 토큰은 폐기한다 (저장하지 않음)
-    const meRes = await fetch("https://api.figma.com/v1/me", {
+    // 2) 신원 조회 후 Google 토큰은 폐기한다 (저장하지 않음)
+    const meRes = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
       headers: { authorization: `Bearer ${token.access_token}` },
     });
-    if (!meRes.ok) return json({ error: "figma /me failed" }, 401);
-    const me = (await meRes.json()) as { id: string; email?: string };
+    if (!meRes.ok) return json({ error: "google userinfo failed" }, 401);
+    const me = (await meRes.json()) as { sub: string; email?: string };
 
     const now = Date.now();
     this.sql.exec(
-      `INSERT INTO users (figma_user_id, email, plan_status, created_at, updated_at)
+      `INSERT INTO users (user_id, email, plan_status, created_at, updated_at)
        VALUES (?, ?, 'free', ?, ?)
-       ON CONFLICT(figma_user_id) DO UPDATE SET email = excluded.email, updated_at = excluded.updated_at`,
-      me.id, me.email ?? null, now, now
+       ON CONFLICT(user_id) DO UPDATE SET email = excluded.email, updated_at = excluded.updated_at`,
+      me.sub, me.email ?? null, now, now
     );
-    const row = this.getUser(me.id);
+    const row = this.getUser(me.sub);
 
     const session = await signToken(
-      { sub: me.id, use: "session", email: me.email },
+      { sub: me.sub, use: "session", email: me.email },
       this.env.SESSION_SIGNING_KEY,
       SESSION_TTL_SEC
     );
@@ -195,25 +200,25 @@ export class AccountDO implements DurableObject {
     );
 
     // 계정 결정: 체크아웃 토큰(신규 결제) 우선, 없으면 기존 구독 ID 로 조회
-    let figmaUserId: string | undefined;
+    let userId: string | undefined;
     let email: string | undefined;
     if (evt.checkoutToken) {
       const ct = await verifyToken(evt.checkoutToken, this.env.SESSION_SIGNING_KEY, "checkout");
       if (ct) {
-        figmaUserId = ct.sub;
+        userId = ct.sub;
         email = ct.email;
       }
     }
-    if (!figmaUserId) {
+    if (!userId) {
       const found = this.sql
         .exec<UserRow>(
           "SELECT * FROM users WHERE paddle_subscription_id = ?",
           evt.subscriptionId
         )
         .toArray();
-      figmaUserId = found[0]?.figma_user_id;
+      userId = found[0]?.user_id;
     }
-    if (!figmaUserId) {
+    if (!userId) {
       // 연결할 계정을 못 찾음 — 수동 조치가 필요하므로 로그만 남기고 성공 응답
       console.error("paddle webhook: 계정 미연결", evt.eventType, evt.subscriptionId);
       return json({ ok: true, unlinked: true });
@@ -221,21 +226,21 @@ export class AccountDO implements DurableObject {
 
     const now = Date.now();
     this.sql.exec(
-      `INSERT INTO users (figma_user_id, email, paddle_customer_id, paddle_subscription_id, plan_status, created_at, updated_at)
+      `INSERT INTO users (user_id, email, paddle_customer_id, paddle_subscription_id, plan_status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(figma_user_id) DO UPDATE SET
+       ON CONFLICT(user_id) DO UPDATE SET
          paddle_customer_id = excluded.paddle_customer_id,
          paddle_subscription_id = excluded.paddle_subscription_id,
          plan_status = excluded.plan_status,
          updated_at = excluded.updated_at`,
-      figmaUserId, email ?? null, evt.customerId ?? null, evt.subscriptionId, evt.planStatus, now, now
+      userId, email ?? null, evt.customerId ?? null, evt.subscriptionId, evt.planStatus, now, now
     );
     return json({ ok: true });
   }
 
-  private getUser(figmaUserId: string): UserRow | undefined {
+  private getUser(userId: string): UserRow | undefined {
     return this.sql
-      .exec<UserRow>("SELECT * FROM users WHERE figma_user_id = ?", figmaUserId)
+      .exec<UserRow>("SELECT * FROM users WHERE user_id = ?", userId)
       .toArray()[0];
   }
 }
