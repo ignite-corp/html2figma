@@ -34,7 +34,7 @@ pnpm --filter @html2figma/extension package
 ## 2. Figma 플러그인 → Figma Community
 
 ### 준비 (이미 완료)
-- 아이콘 128×128 (`packages/figma-plugin/icon.png`, manifest.json `icon` 필드에 연결)
+- 아이콘 128×128 (`packages/figma-plugin/icon.png`) — Publish 모달에서 직접 업로드(manifest.json에는 넣지 않음)
 - 커버 이미지 1920×960 (`docs/store-assets/figma-cover-1920x960.jpg`)
 - 이름/태그/설명(한/영) — `docs/FIGMA_LISTING.md`에 복사해 넣을 수 있는 형태로 정리됨
 
@@ -42,7 +42,7 @@ pnpm --filter @html2figma/extension package
 1. `pnpm --filter @html2figma/figma-plugin build`
 2. Figma 데스크톱 → 플러그인 실행 상태에서 우클릭 → **Publish**
    (또는 Manage plugins → 해당 플러그인 → Publish)
-3. `docs/FIGMA_LISTING.md`의 이름/설명/태그/커버 이미지를 그대로 입력해 제출 (무료, 심사 있음)
+3. `docs/FIGMA_LISTING.md`의 이름/설명/태그를 입력하고 아이콘·커버 이미지를 업로드해 제출 (무료, 심사 있음)
 4. `manifest.json`의 `networkAccess.allowedDomains`에 실제 공개 릴레이 도메인이 포함됐는지 확인.
 
 ---

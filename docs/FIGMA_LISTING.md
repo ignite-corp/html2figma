@@ -128,7 +128,7 @@ immediately), over TLS (wss://). See the privacy policy for details.
 
 | 자산 | 규격 | 상태 |
 |---|---|---|
-| 플러그인 아이콘 | 128×128 PNG | 준비됨 — `packages/figma-plugin/icon.png` (manifest.json `icon` 필드에 연결, 크롬 익스텐션과 동일한 `</>` 브랜드 마크) |
+| 플러그인 아이콘 | 128×128 PNG | 준비됨 — `packages/figma-plugin/icon.png` (크롬 익스텐션과 동일한 `</>` 브랜드 마크). Publish 모달의 아이콘 업로드란에 직접 업로드. **manifest.json에는 `icon` 필드를 넣지 않는다** — 클래식 플러그인 매니페스트 스키마가 이 필드를 허용하지 않아 "unexpected extra property" 에러가 난다(위젯 매니페스트에만 있는 필드). |
 | 커버 이미지 | 1920×960 | 준비됨 — `docs/store-assets/figma-cover-1920x960.jpg` |
 
 > 커버 이미지는 실제 플러그인 UI(페어링 코드 화면)를 라이브 캡처해 합성했습니다.
@@ -142,6 +142,6 @@ immediately), over TLS (wss://). See the privacy policy for details.
 - [ ] `pnpm --filter @html2figma/figma-plugin build`로 최신 빌드 확인
 - [ ] `manifest.json`의 `networkAccess.allowedDomains`에 실제 공개 릴레이 도메인 포함 확인
 - [ ] Figma 데스크톱에서 플러그인 실행 → 우클릭 → Publish
-- [ ] 이름/태그/설명(한국어) 입력, 커버 이미지 업로드(`figma-cover-1920x960.jpg`)
+- [ ] 이름/태그/설명(한국어) 입력, 아이콘(`icon.png`)·커버 이미지(`figma-cover-1920x960.jpg`) 업로드
 - [ ] 지원 채널 URL 입력
 - [ ] 제출 → 심사 대기 (Figma Community 심사는 보통 크롬 웹스토어보다 짧지만 수일 소요될 수 있음)

@@ -4,7 +4,6 @@
   "api": "1.0.0",
   "main": "figma-plugin/main.js",
   "ui": "figma-plugin/ui.html",
-  "icon": "figma-plugin/icon.png",
   "editorType": ["figma"],
   "networkAccess": {
     "allowedDomains": [
