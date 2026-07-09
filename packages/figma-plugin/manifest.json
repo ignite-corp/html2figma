@@ -1,10 +1,11 @@
 {
   "name": "html2figma",
-  "id": "html2figma-importer",
+  "id": "1657063496726706112",
   "api": "1.0.0",
   "main": "figma-plugin/main.js",
   "ui": "figma-plugin/ui.html",
   "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
   "networkAccess": {
     "allowedDomains": [
       "ws://localhost:8787",
