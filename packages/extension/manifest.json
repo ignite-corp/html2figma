@@ -5,7 +5,7 @@
   "default_locale": "ko",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3eg3r4IxRIvQ+lZlBVnMDLhzqZ73ixu/CpRiOBFfaGl7OKwN6ltq0GZBD4kQGifS8LtR/zc6i9WuU54wWvRYlWdN3dKyBiQeU2C1EVpX11g6lQFFxPmU0Wc7PXNfl0rZObdvQRvgXHjUZ+V1jCzm4DPw3ne2rquEV+yS3r4txrJw6UfMT9YykRejwysJMGuQ51tPvk/fmUn+uDWFy+v8KCx/rbi8aFyKEevVjGDx+lSZ49mlK1eBoSkrTknz4ovL/A6tCSMUC3Qh/QYgllx1YPLHfB4zcyxy80gHipoqctfR8aQxKoT4eemqGkJXANQwFQ7hz7LkOsBJAjUNSJcBhwIDAQAB",
   "description": "__MSG_extDescription__",
-  "permissions": ["debugger", "activeTab", "scripting", "storage", "downloads", "tabs", "identity"],
+  "permissions": ["debugger", "activeTab", "scripting", "storage", "tabs", "identity"],
   "host_permissions": ["<all_urls>"],
   "icons": {
     "16": "icons/icon-16.png",

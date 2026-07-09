@@ -44,10 +44,10 @@ html2figma는 웹페이지를 "편집 가능한" Figma 디자인으로 바꿔주
 Figma 안에서 색상, 글자, 레이아웃을 바로 수정할 수 있습니다.
 
 ■ 이렇게 동작합니다
-1. 캡처할 웹페이지에서 확장 프로그램 아이콘을 클릭합니다.
-2. 현재 페이지의 DOM·스타일·레이아웃을 정확히 읽어 .h2f 파일(JSON)로 만듭니다.
-3. Figma에서 html2figma 플러그인을 열어 파일을 불러오면(드롭/붙여넣기/바로 전송)
-   페이지가 편집 가능한 디자인으로 그려집니다.
+1. Figma에서 html2figma 플러그인을 열고 "연결하기"를 눌러 6자리 코드를 받습니다.
+2. 캡처할 웹페이지에서 확장 프로그램 아이콘을 클릭하고 그 코드를 입력합니다.
+3. 캡처하기를 누르면 현재 페이지의 DOM·스타일·레이아웃을 정확히 읽어
+   Figma 플러그인으로 곧바로 전송되고, 편집 가능한 디자인으로 그려집니다.
 
 ■ 무엇을 재현하나요
 • 레이아웃(정확한 위치·크기), 텍스트(폰트·두께·색·정렬)
@@ -61,11 +61,6 @@ Figma 안에서 색상, 글자, 레이아웃을 바로 수정할 수 있습니�
 • Auto Layout 자동 구성
 • Local styles(색상/텍스트 스타일) 자동 생성
 
-■ 세 가지 전달 방식
-• .h2f 파일 다운로드 → Figma 플러그인에 드롭
-• 클립보드 복사 → 플러그인에 붙여넣기
-• direct-send: 6자리 페어링 코드로 익스텐션 → Figma 플러그인으로 즉시 전송(선택)
-
 ■ 요금
 • 무료: 매달 5회 변환 (가입·로그인 불필요)
 • Pro: 월 $9 — 무제한 변환, Google 계정 로그인으로 모든 기기에서 사용, 언제든 해지
@@ -75,14 +70,15 @@ Figma 안에서 색상, 글자, 레이아웃을 바로 수정할 수 있습니�
 • 무료 사용자의 개인정보는 수집하지 않으며, 사용 횟수는 브라우저 안에만 기록됩니다.
 • Pro 구독 시에만 Google 로그인으로 최소 정보(Google 사용자 ID·이메일)와 구독 상태를 저장합니다.
   Google 로그인은 신원 확인 전용 범위(openid email profile)만 사용합니다.
-• 분석/트래킹/광고 식별자를 사용하지 않습니다. 캡처 데이터는 기본적으로 사용자의 기기 안에서만 처리됩니다.
-• direct-send를 켠 경우에만 데이터가 릴레이 서버를 "통과"하며(저장하지 않고 즉시 중계 후 폐기),
-  페어링 코드로 연결된 당사자끼리만 주고받습니다. 전송 구간은 TLS(wss://)로 보호됩니다.
+• 분석/트래킹/광고 식별자를 사용하지 않습니다.
+• 캡처 데이터는 릴레이 서버를 "통과"만 하며(저장하지 않고 즉시 중계 후 폐기),
+  6자리 페어링 코드로 연결된 당사자끼리만 주고받습니다. 전송 구간은 TLS(wss://)로 보호됩니다.
 
 ■ 권한 안내
 정확한 스타일/레이아웃 추출을 위해 Chrome DevTools Protocol(chrome.debugger)로
 현재 탭의 DOM 스냅샷을 읽습니다. 이때 Chrome이 "이 확장 프로그램이 디버깅하고 있습니다"
-배너를 표시하며, 캡처가 끝나면 즉시 해제됩니다. 읽은 데이터는 외부로 전송되지 않습니다.
+배너를 표시하며, 캡처가 끝나면 즉시 해제됩니다. 읽은 데이터는 Figma 플러그인으로
+전송하는 용도 외에 다른 곳으로 보내지 않습니다.
 
 필요한 것: 이 확장 프로그램 + Figma용 html2figma 플러그인.
 ```
@@ -94,10 +90,10 @@ screenshot. Pages are rebuilt as real frames, text, images and vector nodes,
 so you can tweak colors, copy and layout right inside Figma.
 
 ■ How it works
-1. Open the page you want to capture and click the extension icon.
-2. It reads the page's DOM, styles and layout accurately and builds a .h2f file (JSON).
-3. Open the html2figma plugin in Figma and load the file (drop / paste / direct-send)
-   to render the page as an editable design.
+1. Open the html2figma plugin in Figma and click "Connect" to get a 6-digit code.
+2. On the page you want to capture, click the extension icon and enter that code.
+3. Hit Capture — the page's DOM, styles and layout are read accurately, sent
+   straight to the Figma plugin, and rendered as an editable design.
 
 ■ What it reproduces
 • Layout (exact position & size), text (font, weight, color, alignment)
@@ -111,31 +107,26 @@ so you can tweak colors, copy and layout right inside Figma.
 • Auto Layout generation
 • Local styles (color / text) generation
 
-■ Three delivery methods
-• Download a .h2f file → drop into the Figma plugin
-• Copy to clipboard → paste into the plugin
-• direct-send: instant extension → plugin transfer via a 6-digit pairing code (optional)
-
 ■ Pricing
 • Free: 5 conversions per month (no sign-up required)
-• Pro: $9/month — unlimited conversions, works on all your devices via Figma
+• Pro: $9/month — unlimited conversions, works on all your devices via Google
   sign-in, cancel anytime. Payments are securely handled by Paddle (Merchant of Record).
 
 ■ Privacy
 • No personal data is collected for free users; usage counts stay in your browser.
-• Only when you subscribe to Pro do we store minimal account info (Figma user ID,
-  email) and subscription status via Google sign-in. The sign-in uses an
-  identity-only scope and cannot access your Figma files.
-• No analytics/tracking/ad IDs. Capture data is processed on your device by default.
-• Only when you enable direct-send does data PASS THROUGH a relay (never stored;
-  relayed and discarded immediately), exchanged only between parties sharing the
-  pairing code, over TLS (wss://).
+• Only when you subscribe to Pro do we store minimal account info (Google user ID,
+  email) and subscription status via Google sign-in. The sign-in uses
+  identity-only scopes (openid email profile).
+• No analytics/tracking/ad IDs.
+• Capture data only PASSES THROUGH a relay (never stored; relayed and discarded
+  immediately), exchanged only between parties sharing the 6-digit pairing code,
+  over TLS (wss://).
 
 ■ Permissions
 To extract accurate styles/layout it uses the Chrome DevTools Protocol
 (chrome.debugger) to read a DOM snapshot of the current tab. Chrome shows a
 "being debugged" banner during capture and it is released as soon as capture ends.
-The data read is never sent anywhere.
+The data read is only sent to your Figma plugin and nowhere else.
 
 Requires: this extension + the html2figma plugin for Figma.
 ```
@@ -206,23 +197,14 @@ Stores the pairing code and the "send after capture" on/off preference locally
 (chrome.storage.local). Nothing is sent remotely.
 ```
 
-- **downloads**
-```
-캡처 결과인 .h2f 파일을 사용자가 직접 저장할 수 있도록 하기 위해 필요합니다.
-```
-영어:
-```
-Allows the user to save the resulting .h2f capture file to their computer.
-```
-
 - **tabs**
 ```
-활성 탭 정보(제목·ID)를 확인해 캡처 대상과 저장 파일명을 결정하기 위해 사용합니다.
+활성 탭 정보(제목·ID)를 확인해 캡처 대상을 결정하고, 업그레이드 시 결제 페이지 탭을 열기 위해 사용합니다.
 ```
 영어:
 ```
-Reads active tab info (title/ID) to determine the capture target and the saved
-file name.
+Reads active tab info (title/ID) to determine the capture target, and opens the
+checkout page in a new tab on upgrade.
 ```
 
 - **identity**
@@ -233,10 +215,11 @@ Pro 구독 구매·확인 시 Google 계정 OAuth 로그인 창(chrome.identity.
 ```
 영어:
 ```
-Required to open the Figma account OAuth sign-in window
+Required to open a Google account OAuth sign-in window
 (chrome.identity.launchWebAuthFlow) when purchasing or verifying a Pro
 subscription. Free usage requires no sign-in; the flow only runs when the user
-clicks the upgrade/sign-in button.
+clicks the upgrade/sign-in button. The sign-in uses identity-only scopes
+(openid email profile), and the extension never sees or stores the Google password.
 ```
 
 - **host permissions `<all_urls>`**
