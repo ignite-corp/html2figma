@@ -116,6 +116,12 @@
         margin-top: 7px;
         line-height: 1.4;
       }
+      .code-hint a {
+        color: #4c5bff;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      .code-hint a:hover { text-decoration: underline; }
 
       /* ── Capture button ── */
       .btn-capture {
@@ -234,6 +240,7 @@
         <div class="code-label">Figma 플러그인 코드</div>
         <input id="code" type="text" maxlength="6" placeholder="· · · · · ·" autocomplete="off" spellcheck="false" />
         <div class="code-hint">Figma 플러그인에서 <strong>연결하기</strong>를 누른 뒤<br>표시된 6자리 코드를 입력하세요</div>
+        <div class="code-hint">Figma 플러그인이 없나요? <a id="figma-plugin-link">설치하기</a></div>
       </div>
 
       <!-- Capture button -->

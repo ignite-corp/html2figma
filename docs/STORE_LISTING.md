@@ -81,6 +81,7 @@ Figma 안에서 색상, 글자, 레이아웃을 바로 수정할 수 있습니�
 전송하는 용도 외에 다른 곳으로 보내지 않습니다.
 
 필요한 것: 이 확장 프로그램 + Figma용 html2figma 플러그인.
+Figma 플러그인: https://www.figma.com/community/plugin/1657063496726706112
 ```
 
 영어:
@@ -129,6 +130,7 @@ To extract accurate styles/layout it uses the Chrome DevTools Protocol
 The data read is only sent to your Figma plugin and nowhere else.
 
 Requires: this extension + the html2figma plugin for Figma.
+Figma plugin: https://www.figma.com/community/plugin/1657063496726706112
 ```
 
 ---

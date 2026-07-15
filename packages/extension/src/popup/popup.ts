@@ -15,6 +15,9 @@ const paywallEl     = $<HTMLDivElement>("paywall");
 const upgradeBtn    = $<HTMLButtonElement>("upgrade");
 const signinPaywall = $<HTMLAnchorElement>("signin-paywall");
 const accountLine   = $<HTMLDivElement>("account-line");
+const figmaPluginLink = $<HTMLAnchorElement>("figma-plugin-link");
+
+const FIGMA_PLUGIN_URL = "https://www.figma.com/community/plugin/1657063496726706112";
 
 /* ---------------- 플랜/쿼터 상태 ---------------- */
 
@@ -116,6 +119,8 @@ upgradeBtn.addEventListener("click", async () => {
 });
 
 signinPaywall.addEventListener("click", () => void handleSignIn());
+
+figmaPluginLink.addEventListener("click", () => void chrome.tabs.create({ url: FIGMA_PLUGIN_URL }));
 
 /* ---------------- 캡처 ---------------- */
 
