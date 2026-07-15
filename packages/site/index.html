@@ -301,7 +301,11 @@
     }
     .cell:hover { border-color: var(--line2); transform: translateY(-3px); }
     .cell.w3 { grid-column: span 3; }
-    .cell .ic { width: 38px; height: 38px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 17px; margin-bottom: 16px; background: var(--panel2); border: 1px solid var(--line); }
+    .cell .ic { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; background: var(--panel2); border: 1px solid var(--line); }
+    .cell .ic svg { width: 19px; height: 19px; display: block; }
+    .cell .ic.i { background: rgba(108,123,255,.14); border-color: rgba(108,123,255,.3); color: #97a3ff; }
+    .cell .ic.v { background: rgba(167,139,250,.14); border-color: rgba(167,139,250,.3); color: #c7b5fd; }
+    .cell .ic.c { background: rgba(34,211,238,.14); border-color: rgba(34,211,238,.3); color: #6fe9f7; }
     .cell h3 { margin: 0 0 7px; font-size: 16.5px; letter-spacing: -.01em; }
     .cell p { margin: 0; color: var(--tx2); font-size: 13.5px; line-height: 1.65; }
     .cell .shine { position: absolute; top: -60%; right: -30%; width: 240px; height: 240px; border-radius: 50%; filter: blur(60px); opacity: .16; pointer-events: none; }
@@ -509,39 +513,39 @@
     <div class="bento">
       <div class="cell w3 rv">
         <div class="shine" style="background:#6c7bff"></div>
-        <div class="ic">📐</div>
+        <div class="ic i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg></div>
         <h3>픽셀 정확한 레이아웃</h3>
         <p>Chrome DevTools Protocol로 DOM 스냅샷을 읽어 위치·크기를 그대로 재현합니다. 그라디언트, 그림자, 비대칭 보더, 라운드 코너, overflow 클리핑까지.</p>
       </div>
       <div class="cell w3 rv">
         <div class="shine" style="background:#a78bfa"></div>
-        <div class="ic">✏️</div>
+        <div class="ic v"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2"/><path d="M12 4v16"/><path d="M9 20h6"/></svg></div>
         <h3>진짜 편집 가능한 텍스트</h3>
         <p>폰트·두께·색·정렬이 살아있는 텍스트 노드로 도착합니다. 이미지 위 글자를 다시 타이핑할 필요가 없어요.</p>
       </div>
       <div class="cell rv">
-        <div class="ic">🧬</div>
+        <div class="ic c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 18.5C7 10 13 8 19 4.5"/><rect x="2.5" y="16.5" width="4" height="4" rx="1"/><rect x="17.5" y="2.5" width="4" height="4" rx="1"/></svg></div>
         <h3>SVG → 벡터</h3>
         <p>인라인 SVG가 편집 가능한 벡터 노드로 변환됩니다.</p>
       </div>
       <div class="cell rv">
-        <div class="ic">🪆</div>
+        <div class="ic i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
         <h3>iframe · Shadow DOM</h3>
         <p>중첩 프레임과 웹 컴포넌트도 병합해 한 번에 캡처합니다.</p>
       </div>
       <div class="cell rv">
-        <div class="ic">⚡</div>
+        <div class="ic v"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg></div>
         <h3>6자리 코드 direct-send</h3>
         <p>페어링 코드 하나로 익스텐션에서 Figma 플러그인으로 즉시 전송.</p>
       </div>
       <div class="cell w3 rv">
         <div class="shine" style="background:#22d3ee"></div>
-        <div class="ic">🧩</div>
+        <div class="ic c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="7" rx="1.6"/><rect x="3" y="14" width="8" height="7" rx="1.6"/><rect x="13" y="14" width="8" height="7" rx="1.6"/></svg></div>
         <h3>Auto Layout + Local Styles</h3>
         <p>붙여넣고 끝이 아니라, 작업할 수 있게. Auto Layout을 자동 구성하고 색·텍스트 스타일을 Local Styles로 만들어 드립니다.</p>
       </div>
       <div class="cell w3 rv">
-        <div class="ic">🔒</div>
+        <div class="ic i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
         <h3>기본은 로컬, 추적 없음</h3>
         <p>캡처 데이터는 기본적으로 내 기기 안에서만 처리됩니다. 분석·트래킹·광고 식별자 없음. direct-send 시에도 릴레이는 저장 없이 즉시 중계 후 폐기합니다.</p>
       </div>
