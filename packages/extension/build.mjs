@@ -52,9 +52,10 @@ const common = {
   bundle: true,
   format: "esm",
   target: "chrome110",
-  // 사내 배포본에는 소스맵을 넣지 않는다. 소스맵에는 원본 전체(주석 포함)가 임베드되므로
-  // 결제 관련 설정·주석이 사내 zip 에 그대로 실려나간다. 디버깅은 개발 빌드로 한다.
-  sourcemap: !internal,
+  // 배포본에는 소스맵을 넣지 않는다. 소스맵에는 원본 전체(주석 포함)가 임베드되므로
+  // 내부 설정·주석이 zip 에 그대로 실려나간다(사내 zip 이든 공개 스토어 zip 이든).
+  // 디버깅은 소스맵이 붙는 개발 빌드(플래그 없음)로 한다.
+  sourcemap: !internal && !forStore,
   logLevel: "info",
   define: { __INTERNAL__: internal ? "true" : "false" },
   plugins: internal ? [stubForInternalPlugin] : [],
