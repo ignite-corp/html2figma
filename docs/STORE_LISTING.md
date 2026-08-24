@@ -59,7 +59,6 @@ Figma 안에서 색상, 글자, 레이아웃을 바로 수정할 수 있습니�
 
 ■ Figma 플러그인 옵션
 • Auto Layout 자동 구성
-• Local styles(색상/텍스트 스타일) 자동 생성
 
 ■ 요금
 • 무료: 매달 5회 변환 (가입·로그인 불필요)
@@ -106,7 +105,6 @@ so you can tweak colors, copy and layout right inside Figma.
 
 ■ Figma plugin options
 • Auto Layout generation
-• Local styles (color / text) generation
 
 ■ Pricing
 • Free: 5 conversions per month (no sign-up required)
@@ -283,7 +281,7 @@ https://gist.github.com/zi-gae/2df62695588e3a6b4a70edc084676fc0
 1. `클릭 한 번으로 현재 웹페이지를 캡처` — 제작됨: `docs/store-assets/screenshot-1.png`
 2. `Figma로 바로 전송 / 파일·클립보드로 저장` — 제작됨: `docs/store-assets/screenshot-2.png`
 3. `Figma 플러그인이 받아서 바로 렌더` — 제작됨: `docs/store-assets/screenshot-3.png`
-4. `Auto Layout + Local styles 자동 생성`
+4. `Auto Layout 자동 구성`
 5. `6자리 코드로 Figma에 바로 전송 (선택)`
 
 > 제작 스크립트: `docs/store-assets/generate.py`, `generate-3.py` (Pillow, AppleSDGothicNeo). 팝업 캡처

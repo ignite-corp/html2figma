@@ -66,7 +66,6 @@ html2figma는 **html2figma 크롬 익스텐션**이 캡처한 웹페이지를 �
 
 **플러그인 옵션**
 - Auto Layout 자동 구성
-- Local styles(색상/텍스트 스타일) 자동 생성
 
 **전달 방식**
 - direct-send: 6자리 페어링 코드로 익스텐션 → 플러그인 즉시 전송(현재 유일한 전달 방식)
@@ -104,7 +103,6 @@ colors, copy and layout right inside Figma.
 
 **Plugin options**
 - Auto Layout generation
-- Local styles (color / text) generation
 
 **Delivery method**
 - direct-send: instant extension → plugin transfer via a 6-digit pairing code

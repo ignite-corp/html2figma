@@ -9,7 +9,7 @@
 packages/
   shared/        # .h2f IR 타입 + CSS→Figma 매핑 공용 유틸 + 릴레이 프로토콜/허브
   extension/     # 크롬 MV3: CDP 캡처 → IR 직렬화 → .h2f 다운로드 / 클립보드 / direct-send
-  figma-plugin/  # Figma: .h2f 파싱 → 노드 렌더 + local styles 생성 + 페어링 수신
+  figma-plugin/  # Figma: .h2f 파싱 → 노드 렌더 + 페어링 수신
   bridge/        # 로컬 릴레이(자체호스팅/개발): 룸+페어링 코드 WebSocket 중계
   relay-cf/      # 공개 릴레이: Cloudflare Workers + Durable Objects (룸 격리)
 ```
@@ -22,7 +22,7 @@ packages/
 ### 렌더 파이프라인 (figma-plugin)
 `.h2f` 를 읽어 Frame/Text/Image/Vector 노드로 재구성. 배경/그라디언트/보더/라운드/그림자/불투명도 매핑,
 인라인 SVG 는 `figma.createNodeFromSvg` 로 벡터 렌더, 폰트 로드(실패 시 Inter fallback),
-선택적 Auto Layout 및 local styles 생성. 번들(`.h2f` bundle)은 여러 페이지를 가로로 나란히 배치.
+선택적 Auto Layout 구성. 번들(`.h2f` bundle)은 여러 페이지를 가로로 나란히 배치.
 
 ## 빌드
 
@@ -101,7 +101,7 @@ pnpm --filter @html2figma/bridge test      # 릴레이 룸/페어링/격리 단�
 - 보더(비대칭 두께 포함), border-radius, box-shadow, opacity, overflow clip
 - **iframe / shadow DOM** 병합 캡처, **인라인 SVG → 벡터** 렌더
 - **direct send**(페어링 릴레이), 대용량 페이지 청크 분할 전송
-- 플러그인 옵션: **Auto Layout 사용**, **Local styles 생성** (기본 on)
+- 플러그인 옵션: **Auto Layout 사용** (기본 off)
 
 ## 알려진 한계 / 이후 과제
 
