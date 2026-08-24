@@ -258,8 +258,12 @@ export function mapTextStyle(s: ComputedStyleMap): TextStyle {
   const color = parseCssColor(s["color"]) ?? { r: 0, g: 0, b: 0, a: 1 };
 
   const lineHeightRaw = s["line-height"];
-  const lineHeight =
+  // line-height: 0 은 실무에서 래퍼 높이를 죽이는 용도로 쓰이고, 글자는 박스 밖으로 넘쳐
+  // 정상 크기로 그려진다. 그 0 을 그대로 Figma 에 넘기면 텍스트 박스가 붕괴하므로,
+  // 0 이하는 지정 없음(normal)으로 취급해 폰트의 자연 행간을 쓰게 한다.
+  const lineHeightPx =
     lineHeightRaw && lineHeightRaw !== "normal" ? parsePx(lineHeightRaw) : undefined;
+  const lineHeight = lineHeightPx != null && lineHeightPx > 0 ? lineHeightPx : undefined;
 
   const lsRaw = s["letter-spacing"];
   const letterSpacing = lsRaw && lsRaw !== "normal" ? parsePx(lsRaw) : undefined;

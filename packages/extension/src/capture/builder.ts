@@ -90,7 +90,25 @@ export function buildIR(snapshot: ParsedSnapshot) {
     }
 
     const layout = layoutOf(node, ox, oy);
-    if (!layout) return node.children.flatMap((c) => build(c, ox, oy, childClip));
+    if (!layout) {
+      // 0 폭/높이 박스는 자기 프레임을 만들 수 없지만, 자식 텍스트는 실제로 그려진다.
+      // (예: `line-height: 0` 인 셀 래퍼 — 박스는 높이 0 이고 글자는 밖으로 넘쳐 렌더된다)
+      // 텍스트 수집은 살아남은 부모가 buildDirectTexts 를 호출할 때만 일어나므로, 여기서
+      // 수확하지 않으면 아래 재귀에서 텍스트 노드(nodeType 3)가 버려져 조용히 사라진다.
+      // 텍스트 조각은 자기 bounds 를 갖고 있어 좌표는 정상적으로 복원된다.
+      const out: H2FNode[] = [];
+      if (isInlineTextContainer(node)) {
+        const t = buildInlineText(ctx, node, ox, oy);
+        if (t) out.push(t);
+      } else {
+        out.push(...buildDirectTexts(ctx, node, ox, oy));
+      }
+      for (const c of node.children) {
+        if (c.nodeType === 3) continue;
+        out.push(...build(c, ox, oy, childClip));
+      }
+      return out;
+    }
 
     if (node.nodeName === "IMG") {
       const img = buildImage(ctx, node, ox, oy);

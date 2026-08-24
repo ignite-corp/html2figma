@@ -1100,5 +1100,68 @@ assert(
   "border 프레임에 cornerRadius(4) 가 적용됨"
 );
 
+/* ---------------- line-height:0 래퍼(높이 0) 안의 텍스트 ---------------- */
+// 실제 사례(DEALERS_BO Domain Setting 표): td(높이 40) > div.cell_text(line-height:0 → 높이 0)
+// > 텍스트. 래퍼 박스가 0 이면 layoutOf 가 null 이라 프레임을 못 만드는데, 그때 자식으로
+// 재귀하면 텍스트 노드(nodeType 3)가 버려져 셀 값이 통째로 사라졌다(행까지 프루닝됨).
+// 텍스트 조각은 자기 bounds(높이 17)를 갖고 있으므로 그것으로 복원돼야 한다.
+console.log("\nline-height:0 래퍼 안 텍스트:");
+function zeroHeightWrapSnap(): CaptureSnapshotResult {
+  const s: string[] = [""];
+  const it = (v: string) => {
+    const i = s.indexOf(v);
+    if (i >= 0) return i;
+    s.push(v);
+    return s.length - 1;
+  };
+  const row = (m: Record<string, string>) => COMPUTED_STYLES.map((n) => it(m[n] ?? ""));
+  const VALUE = "http://www.hyundaiusa.com";
+  return {
+    strings: s,
+    documents: [
+      {
+        documentURL: it("https://example.com"),
+        title: it("zero-height wrapper"),
+        nodes: {
+          parentIndex: [-1, 0, 1],
+          nodeType: [1, 1, 3],
+          nodeName: [it("TD"), it("DIV"), it("#text")],
+          nodeValue: [it(""), it(""), it(VALUE)],
+          backendNodeId: [1, 2, 3],
+          attributes: [[], [], []],
+        },
+        layout: {
+          nodeIndex: [0, 1, 2],
+          styles: [
+            row({ "display": "table-cell", "line-height": "0px", "font-size": "14px" }),
+            row({ "display": "block", "line-height": "0px", "font-size": "14px" }),
+            row({}),
+          ],
+          bounds: [
+            [438, 292, 392, 40],
+            [454, 312, 360, 0], // line-height:0 → 높이 0
+            [454, 304, 171, 17], // 텍스트 조각은 실제 글자 박스를 가진다
+          ],
+          text: [it(""), it(""), it(VALUE)],
+        },
+      },
+    ],
+  } as unknown as CaptureSnapshotResult;
+}
+const zeroWrapTexts = collectTexts(buildIR(parseAllDocuments(zeroHeightWrapSnap())).root);
+assert(zeroWrapTexts.length === 1, "높이 0 래퍼 안 텍스트가 유실되지 않음");
+assert(
+  (zeroWrapTexts[0] as { characters?: string }).characters === "http://www.hyundaiusa.com",
+  "셀 값 문자열이 그대로 복원됨"
+);
+assert(
+  !!zeroWrapTexts[0] && zeroWrapTexts[0].layout.height === 17 && zeroWrapTexts[0].layout.y === 304,
+  "좌표/높이를 텍스트 조각의 bounds 에서 가져옴 (y=304, h=17)"
+);
+assert(
+  (zeroWrapTexts[0] as { text?: { lineHeight?: number } }).text?.lineHeight === undefined,
+  "line-height:0 은 지정 없음으로 취급 (Figma 텍스트 박스 붕괴 방지)"
+);
+
 console.log(failures === 0 ? "\n✅ 모든 테스트 통과" : `\n❌ ${failures}개 실패`);
 process.exit(failures === 0 ? 0 : 1);
