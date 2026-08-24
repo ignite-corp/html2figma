@@ -55,7 +55,8 @@ export function toFigmaEffect(e: Effect): Effect_ {
     color: { r: e.color.r, g: e.color.g, b: e.color.b, a: e.color.a },
     offset: { x: e.offsetX, y: e.offsetY },
     radius: e.blur,
-    spread: e.spread,
+    // CSS box-shadow 의 spread 는 음수가 가능하지만 Figma 는 음수를 받지 않는다.
+    spread: Math.max(0, e.spread),
     visible: true,
     blendMode: "NORMAL",
   };

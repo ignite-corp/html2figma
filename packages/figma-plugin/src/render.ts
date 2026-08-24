@@ -26,6 +26,13 @@ export interface RenderOptions {
   useAutoLayout: boolean;
 }
 
+/**
+ * Figma 가 검증하는 fontSize 하한. CSS 의 `font-size: 0`(inline-block 공백 제거,
+ * 스크린리더 전용 텍스트 등)이 그대로 넘어오면 노드 생성이 실패해 임포트 전체가 중단되므로,
+ * 값을 버리지 않고 하한으로 올린다.
+ */
+const MIN_FONT_SIZE = 1;
+
 export class Renderer {
   private assets: AssetMap;
   private opts: RenderOptions;
@@ -271,7 +278,7 @@ export class Renderer {
     const font = await this.loadFont(node.text.fontFamily, node.text.fontStyle, node.text.fontWeight);
     text.fontName = font;
     text.characters = node.characters;
-    text.fontSize = node.text.fontSize;
+    text.fontSize = Math.max(MIN_FONT_SIZE, node.text.fontSize);
     text.name = node.name;
 
     if (node.text.lineHeight != null) {
@@ -299,7 +306,9 @@ export class Renderer {
         }
         if (sg.color) text.setRangeFills(start, end, [solid(sg.color)]);
         if (sg.textDecoration) text.setRangeTextDecoration(start, end, mapDecoration(sg.textDecoration));
-        if (sg.fontSize != null) text.setRangeFontSize(start, end, sg.fontSize);
+        if (sg.fontSize != null) {
+          text.setRangeFontSize(start, end, Math.max(MIN_FONT_SIZE, sg.fontSize));
+        }
         if (sg.letterSpacing != null) {
           text.setRangeLetterSpacing(start, end, { value: sg.letterSpacing, unit: "PIXELS" });
         }
