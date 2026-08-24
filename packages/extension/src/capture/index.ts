@@ -128,6 +128,33 @@ function maxBlockRight(node: H2FNode, minWidth: number): number {
  * 좌표는 절대값. maxRight(대개 루트 우측)로 상한을 두어 가로 bleed 로 폭주하지 않게 한다.
  * overflow 를 자르는 프레임(clipsContent)은 의도적으로 자식을 가두므로 확장하지 않는다.
  */
+/**
+ * 뷰포트를 꽉 덮는 `position: fixed` 오버레이를 루트 박스까지 늘린다.
+ *
+ * fixed 요소는 뷰포트 기준이라 스냅샷 bounds 가 뷰포트 크기다. 전체 페이지 캡처는 문서
+ * 전체를 한 장으로 펼치므로, 모달 딤드처럼 화면을 덮는 오버레이가 문서의 우측/하단을
+ * 덮지 못해 밝은 띠가 남는다(브라우저에서는 fixed 가 스크롤을 따라다녀 보이지 않는 틈).
+ *
+ * 뷰포트의 90% 이상을 덮는 것만 대상으로 삼아 sticky 헤더·플로팅 버튼 같은 일반 fixed
+ * 요소는 건드리지 않는다. x/y 는 그대로 두고 크기만 늘려 자식 좌표에 영향을 주지 않는다.
+ */
+function stretchViewportOverlays(
+  frames: FrameNode[],
+  root: FrameNode,
+  vpWidth: number,
+  vpHeight: number
+): void {
+  const right = root.layout.x + root.layout.width;
+  const bottom = root.layout.y + root.layout.height;
+  for (const f of frames) {
+    if (f.layout.width < vpWidth * 0.9 || f.layout.height < vpHeight * 0.9) continue;
+    const width = Math.max(f.layout.width, right - f.layout.x);
+    const height = Math.max(f.layout.height, bottom - f.layout.y);
+    if (width === f.layout.width && height === f.layout.height) continue;
+    f.layout = { ...f.layout, width, height };
+  }
+}
+
 function expandToFitChildren(node: H2FNode, maxRight: number): void {
   if (node.type !== "frame") return;
   const frame = node as FrameNode;
@@ -245,7 +272,7 @@ export async function capturePage(
       pseudoIcons.map((p) => p.hostId).filter((id): id is string => !!id)
     );
 
-    const { root, imageUrls, svgRequests, svgUrlRequests, hostFrames } = buildIR(
+    const { root, imageUrls, svgRequests, svgUrlRequests, hostFrames, fixedFrames } = buildIR(
       parsed,
       pseudoHostIds
     );
@@ -275,6 +302,8 @@ export async function capturePage(
       };
       // body/wrapper 등 자기보다 넓은 자손을 가진 컨테이너를 루트 폭까지 넓혀 정렬을 맞춘다.
       expandToFitChildren(root, root.layout.x + root.layout.width);
+      // 모달 딤드처럼 화면을 덮는 fixed 오버레이를 문서 전체로 늘린다.
+      stretchViewportOverlays(fixedFrames, root, vp.width, vp.height);
     }
 
     // 위에서 수집한 의사요소 아이콘을 호스트 프레임(없으면 root)에 얹는다.

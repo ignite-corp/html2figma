@@ -109,6 +109,15 @@ export interface Layout {
    * DOM 순서와 다를 수 있으므로 렌더 시 이 값으로 형제를 정렬한다.
    */
   order?: number;
+  /**
+   * 형제 정렬용 유효 z-index. `position` 이 static 이 아닐 때만 값이 있다
+   * (CSS 에서 static 요소의 z-index 는 무시된다).
+   *
+   * DOMSnapshot 의 paintOrder 는 z-index 를 반영하지 않아, 예컨대 MUI 모달의
+   * `z-index:-1` 백드롭이 dialog container 보다 큰 paintOrder 로 나온다. 그대로
+   * 정렬하면 딤드가 모달 위를 덮는다. 그래서 order 보다 이 값을 우선 비교한다.
+   */
+  z?: number;
 }
 
 export interface AutoLayout {

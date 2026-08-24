@@ -47,6 +47,7 @@ export function buildIR(snapshot: ParsedSnapshot, pseudoHostIds: Set<string> = n
   const svgRequests: import("./builderTypes.js").SvgRequest[] = [];
   const svgUrlRequests: import("./builderTypes.js").SvgUrlRequest[] = [];
   const hostFrames = new Map<string, FrameNode>();
+  const fixedFrames: FrameNode[] = [];
   const docs = snapshot.documents;
   let idCounter = 0;
   const baseUrl = docs[0]?.url || "";
@@ -65,6 +66,7 @@ export function buildIR(snapshot: ParsedSnapshot, pseudoHostIds: Set<string> = n
     svgRequests,
     svgUrlRequests,
     hostFrames,
+    fixedFrames,
   };
 
   function build(node: RawNode, ox: number, oy: number, clip: Clip): H2FNode[] {
@@ -185,6 +187,8 @@ export function buildIR(snapshot: ParsedSnapshot, pseudoHostIds: Set<string> = n
       children: sortByOrder(children),
     };
     if (hostId) hostFrames.set(hostId, frame);
+    // fixed 오버레이는 루트 크기 확정 후 늘려야 하므로 모아둔다(BuildResult.fixedFrames).
+    if (rl?.styles["position"] === "fixed") fixedFrames.push(frame);
     return [frame];
   }
 
@@ -220,5 +224,5 @@ export function buildIR(snapshot: ParsedSnapshot, pseudoHostIds: Set<string> = n
     };
   }
 
-  return { root, imageUrls, svgRequests, svgUrlRequests, hostFrames };
+  return { root, imageUrls, svgRequests, svgUrlRequests, hostFrames, fixedFrames };
 }

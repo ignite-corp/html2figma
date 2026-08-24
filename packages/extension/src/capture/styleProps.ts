@@ -9,6 +9,12 @@ export const COMPUTED_STYLES = [
   "overflow",
   "overflow-x",
   "overflow-y",
+  // 스태킹: DOMSnapshot 의 paintOrder 는 z-index 를 반영하지 않는다(측정 확인:
+  // z-index:-1 백드롭이 dialog container 보다 paintOrder 가 크게 나온다). 형제 정렬에
+  // z-index 를 직접 쓰기 위해 캡처한다. position 은 z-index 적용 여부 판정(static 이면
+  // 무시)과 뷰포트 전체를 덮는 fixed 오버레이 판별에 쓴다.
+  "position",
+  "z-index",
 
   // 배경
   "background-color",

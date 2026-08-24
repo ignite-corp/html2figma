@@ -18,6 +18,12 @@ export interface BuildResult {
   svgUrlRequests: SvgUrlRequest[];
   /** data-h2f-el 속성값 → 해당 요소의 프레임 노드. 의사요소 아이콘을 호스트 안에 넣기 위함. */
   hostFrames: Map<string, FrameNode>;
+  /**
+   * `position: fixed` 요소의 프레임. fixed 요소는 뷰포트 기준이라 전체 페이지 캡처에서
+   * 문서보다 작게 남는다(모달 딤드가 우측/하단을 못 덮는 문제). 루트 크기가 확정된 뒤
+   * 뷰포트를 꽉 덮는 것만 골라 늘리기 위해 모아둔다.
+   */
+  fixedFrames: FrameNode[];
 }
 
 export interface BuildCtx {
@@ -27,4 +33,5 @@ export interface BuildCtx {
   svgRequests: SvgRequest[];
   svgUrlRequests: SvgUrlRequest[];
   hostFrames: Map<string, FrameNode>;
+  fixedFrames: FrameNode[];
 }

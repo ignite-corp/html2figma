@@ -1231,5 +1231,102 @@ assert(
   "호스트가 루트로 승격되지 않고 원래 부모 밑에 남는다"
 );
 
+/* ---------------- z-index 우선 정렬 (모달 딤드가 모달 위를 덮던 문제) ---------------- */
+// 실측(DEALERS_BO): MuiBackdrop-root 는 z-index:-1 인데 DOMSnapshot paintOrder 가
+// 1220 으로 dialog container(1219)보다 크게 나온다. paintOrder 만으로 정렬하면 딤드가
+// 모달 위를 덮는다. 유효 z-index 를 먼저 비교해야 한다.
+console.log("\nz-index 우선 정렬:");
+function zOrderSnap(backdropPosition: string): CaptureSnapshotResult {
+  const s: string[] = [""];
+  const it = (v: string) => {
+    const i = s.indexOf(v);
+    if (i >= 0) return i;
+    s.push(v);
+    return s.length - 1;
+  };
+  const row = (m: Record<string, string>) => COMPUTED_STYLES.map((n) => it(m[n] ?? ""));
+  return {
+    strings: s,
+    documents: [
+      {
+        documentURL: it("https://example.com"),
+        title: it("z-order"),
+        nodes: {
+          // MODAL > [BACKDROP(z:-1), DIALOG]
+          parentIndex: [-1, 0, 0],
+          nodeType: [1, 1, 1],
+          nodeName: [it("DIV"), it("BACKDROP"), it("DIALOG")],
+          nodeValue: [it(""), it(""), it("")],
+          backendNodeId: [1, 2, 3],
+          attributes: [[], [], []],
+        },
+        layout: {
+          nodeIndex: [0, 1, 2],
+          styles: [
+            row({ "display": "block", "position": "fixed", "z-index": "1300" }),
+            row({
+              "display": "block",
+              "position": backdropPosition,
+              "z-index": "-1",
+              "background-color": "rgba(0, 0, 0, 0.5)",
+            }),
+            row({
+              "display": "block",
+              "position": "static",
+              // 배경이 없으면 빈 프레임으로 프루닝되므로 흰 패널로 둔다(실제 모달과 동일)
+              "background-color": "rgb(255, 255, 255)",
+            }),
+          ],
+          bounds: [
+            [0, 0, 1000, 800],
+            [0, 0, 1000, 800],
+            [100, 100, 500, 400],
+          ],
+          // paintOrder: 백드롭(20)이 dialog(19)보다 크다 — 실제 CDP 값과 같은 상황
+          paintOrders: [18, 20, 19],
+          text: [it(""), it(""), it("")],
+        },
+      },
+    ],
+  } as unknown as CaptureSnapshotResult;
+}
+const zRoot = buildIR(parseAllDocuments(zOrderSnap("fixed"))).root;
+assert(
+  !!zRoot && zRoot.type === "frame" && zRoot.children.length === 2,
+  "모달 루트에 백드롭/다이얼로그 2개"
+);
+if (zRoot && zRoot.type === "frame") {
+  assert(
+    zRoot.children[0].layout.width === 1000,
+    "z-index:-1 백드롭이 먼저(아래) 정렬된다 — paintOrder 가 더 크더라도"
+  );
+  assert(
+    zRoot.children[1].layout.width === 500,
+    "다이얼로그가 나중(위)에 정렬된다"
+  );
+}
+// static 요소의 z-index 는 CSS 에서 무시된다 → paintOrder 순서가 그대로 유지돼야 한다
+const zStatic = buildIR(parseAllDocuments(zOrderSnap("static"))).root;
+if (zStatic && zStatic.type === "frame") {
+  assert(
+    zStatic.children[0].layout.width === 500 && zStatic.children[1].layout.width === 1000,
+    "position:static 이면 z-index 를 무시하고 paintOrder 순서를 따른다"
+  );
+}
+
+/* ---------------- 뷰포트를 덮는 fixed 오버레이 확장 ---------------- */
+// 딤드가 문서 우측/하단을 못 덮어 밝은 띠가 남던 문제. 캡처 파이프라인의 stretch 단계는
+// index.ts 에 있으므로 여기서는 fixedFrames 수집이 되는지(수정의 전제)를 검증한다.
+console.log("\nfixed 오버레이 수집:");
+const fixedBuilt = buildIR(parseAllDocuments(zOrderSnap("fixed")));
+assert(
+  fixedBuilt.fixedFrames.length === 2,
+  "position:fixed 프레임 2개(모달 루트+백드롭)가 수집된다"
+);
+assert(
+  fixedBuilt.fixedFrames.every((f: FrameNode) => f.layout.width === 1000),
+  "수집된 fixed 프레임은 뷰포트 크기(1000) 그대로 — 확장은 루트 확정 후 단계에서 수행"
+);
+
 console.log(failures === 0 ? "\n✅ 모든 테스트 통과" : `\n❌ ${failures}개 실패`);
 process.exit(failures === 0 ? 0 : 1);

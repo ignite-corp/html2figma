@@ -50,10 +50,21 @@ export function alignPos(
  * z-index/absolute 로 DOM 순서와 스태킹이 다른 경우에도 올바르게 겹치도록 한다.
  * 안정 정렬이므로 order 가 같으면 DOM(삽입) 순서를 유지한다.
  */
+/**
+ * 형제를 그려지는 순서(뒤 → 앞)로 정렬한다.
+ * 우선순위: 유효 z-index → paintOrder → DOM 순서.
+ *
+ * z-index 를 paintOrder 보다 먼저 보는 이유는 DOMSnapshot 의 paintOrder 가 z-index 를
+ * 반영하지 않기 때문이다(z-index:-1 백드롭이 형제보다 큰 paintOrder 로 나온다).
+ * z-index 비교는 형제 범위로만 제한되므로 스태킹 컨텍스트 규칙과 충돌하지 않는다.
+ */
 export function sortByOrder(nodes: H2FNode[]): H2FNode[] {
   return nodes
     .map((n, i) => ({ n, i }))
     .sort((a, b) => {
+      const za = a.n.layout.z ?? 0;
+      const zb = b.n.layout.z ?? 0;
+      if (za !== zb) return za - zb;
       const oa = a.n.layout.order ?? 0;
       const ob = b.n.layout.order ?? 0;
       return oa === ob ? a.i - b.i : oa - ob;
@@ -83,11 +94,31 @@ export function unionBounds(nodes: H2FNode[]): Layout {
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 
+/**
+ * CSS 에서 z-index 는 position 이 static 인 요소에는 적용되지 않는다.
+ * 그 규칙대로, static 이거나 z-index 가 auto/비수치면 undefined 를 돌려준다.
+ */
+export function effectiveZIndex(styles: Record<string, string>): number | undefined {
+  const position = styles["position"];
+  if (!position || position === "static") return undefined;
+  const raw = styles["z-index"];
+  if (!raw || raw === "auto") return undefined;
+  const z = parseInt(raw, 10);
+  return Number.isNaN(z) ? undefined : z;
+}
+
 export function layoutOf(node: RawNode, ox: number, oy: number): Layout | null {
   if (!node.layout) return null;
   const [x, y, width, height] = node.layout.bounds;
   if (width <= 0 || height <= 0) return null;
-  return { x: x + ox, y: y + oy, width, height, order: node.layout.paintOrder };
+  return {
+    x: x + ox,
+    y: y + oy,
+    width,
+    height,
+    order: node.layout.paintOrder,
+    z: effectiveZIndex(node.layout.styles),
+  };
 }
 
 export function layoutFromRawLayout(rl: NonNullable<RawNode["layout"]>, ox: number, oy: number): Layout | null {
