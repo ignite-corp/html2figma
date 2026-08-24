@@ -3,7 +3,6 @@ import type { H2FFile, RelayServerMsg } from "@html2figma/shared";
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 const autolayout = $<HTMLInputElement>("autolayout");
-const styles = $<HTMLInputElement>("styles");
 const statusEl = $<HTMLDivElement>("status");
 const bridgeConnectBtn = $<HTMLButtonElement>("bridge-connect");
 const bridgeStatus = $<HTMLSpanElement>("bridge-status");
@@ -20,7 +19,7 @@ function setStatus(t: string) {
 }
 
 function optionsPayload() {
-  return { useAutoLayout: autolayout.checked, createStyles: styles.checked };
+  return { useAutoLayout: autolayout.checked };
 }
 
 function doImport(f: H2FFile) {

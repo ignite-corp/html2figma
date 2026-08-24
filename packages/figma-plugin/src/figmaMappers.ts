@@ -95,11 +95,6 @@ export function mapTextCase(v: IRTextStyle["textCase"]): TextCase {
   }
 }
 
-export function colorKey(c: RGBA): string {
-  const h = (n: number) => Math.round(n * 255).toString(16).padStart(2, "0");
-  return `${h(c.r)}${h(c.g)}${h(c.b)}${c.a < 1 ? h(c.a) : ""}`;
-}
-
 export function gradientTransform(angleDeg: number): Transform {
   const a = (angleDeg * Math.PI) / 180;
   const cos = Math.sin(a);

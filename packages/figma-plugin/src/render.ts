@@ -6,10 +6,8 @@ import type {
   H2FNode,
   ImageNode as IRImage,
   Paint as IRPaint,
-  RGBA,
   Stroke,
   TextNode as IRText,
-  TextStyle as IRTextStyle,
   VectorNode as IRVector,
 } from "@html2figma/shared";
 
@@ -21,13 +19,11 @@ import {
   mapTextAlign,
   mapDecoration,
   mapTextCase,
-  colorKey,
   gradientTransform,
 } from "./figmaMappers.js";
 
 export interface RenderOptions {
   useAutoLayout: boolean;
-  createStyles: boolean;
 }
 
 export class Renderer {
@@ -35,8 +31,6 @@ export class Renderer {
   private opts: RenderOptions;
   private imageHashCache = new Map<string, string>();
   private fontCache = new Map<string, FontName>();
-  private paintStyleCache = new Map<string, PaintStyle>();
-  private textStyleCache = new Map<string, TextStyle>();
 
   constructor(assets: AssetMap, opts: RenderOptions) {
     this.assets = assets;
@@ -324,10 +318,6 @@ export class Renderer {
       text.resize(Math.max(1, node.layout.width + 2), text.height);
     }
 
-    if (this.opts.createStyles) {
-      await this.applyTextStyle(text, node.text, font);
-    }
-
     this.position(text, node, parentX, parentY);
     // 단일 줄 텍스트는 캡처된 박스의 세로 중심에 라인 박스를 맞춘다.
     // (line-height 가 큰 인라인 텍스트가 아래로 밀리거나, input placeholder 가
@@ -388,10 +378,7 @@ export class Renderer {
       const paints = style.fills
         .map((p) => this.toFigmaPaint(p))
         .filter((p): p is Paint => p != null);
-      if (paints.length) {
-        node.fills = paints;
-        if (this.opts.createStyles) this.applyFillStyle(node, style.fills);
-      }
+      if (paints.length) node.fills = paints;
     }
 
     if (style.strokes?.length) this.applyStrokes(node, style.strokes[0]);
@@ -458,37 +445,4 @@ export class Renderer {
     }
   }
 
-  /* ---------------- Local styles (Phase 10) ---------------- */
-
-  private applyFillStyle(node: FrameNode | RectangleNode, fills: IRPaint[]) {
-    const solidFill = fills.find((f): f is Extract<IRPaint, { type: "solid" }> => f.type === "solid");
-    if (!solidFill) return;
-    const style = this.getPaintStyle(solidFill.color);
-    node.fillStyleId = style.id;
-  }
-
-  private getPaintStyle(color: RGBA): PaintStyle {
-    const key = colorKey(color);
-    const cached = this.paintStyleCache.get(key);
-    if (cached) return cached;
-    const style = figma.createPaintStyle();
-    style.name = `color/${key}`;
-    style.paints = [solid(color)];
-    this.paintStyleCache.set(key, style);
-    return style;
-  }
-
-  private async applyTextStyle(node: TextNode, ts: IRTextStyle, font: FontName) {
-    const key = `${font.family}/${font.style}/${ts.fontSize}/${ts.lineHeight ?? "auto"}`;
-    let style = this.textStyleCache.get(key);
-    if (!style) {
-      style = figma.createTextStyle();
-      style.name = `text/${font.family}-${font.style}-${ts.fontSize}`;
-      style.fontName = font;
-      style.fontSize = ts.fontSize;
-      if (ts.lineHeight != null) style.lineHeight = { value: ts.lineHeight, unit: "PIXELS" };
-      this.textStyleCache.set(key, style);
-    }
-    await node.setTextStyleIdAsync(style.id);
-  }
 }
