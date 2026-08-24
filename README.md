@@ -78,9 +78,16 @@ pnpm --filter @html2figma/bridge test      # 릴레이 룸/페어링/격리 단�
 | 배포처 | Chrome Web Store | 사내 직접 배포(개발자 모드 언팩 로드) |
 | 쿼터/결제 | 월 5회 무료 + Pro($9/월) | 없음 — 무제한 |
 | 번들 내용 | Google OAuth·account-api·결제 페이지 포함 | **해당 코드 전부 미포함**(빌드 시 스텁으로 치환) |
+| 팝업 마크업 | 페이월·업그레이드·로그인 UI 포함 | 해당 마크업 제거(숨김이 아니라 파일에서 삭제) |
+| 소스맵 | 포함 | **미포함**(원본 주석까지 임베드되므로 제외) |
 | `identity` 권한 | 있음 | 없음(로그인을 하지 않으므로 제거) |
 | 이름 | html2figma | html2figma (사내용) / (Internal) |
 
+- **사내 산출물에 결제 관련 문구/코드가 없는지 검사**: `pnpm --filter @html2figma/extension test:builds`
+  (`package:internal` 에도 물려 있어 zip 을 만들기 전에 자동 실행된다). esbuild 가 한글을 `\uXXXX` 로
+  이스케이프하기 때문에 단순 grep 으로는 검출되지 않아, 이스케이프를 되돌려 검사한다.
+- 결제 관련 설정 상수는 `src/billingConfig.ts` 에만 둔다. `src/config.ts` 는 사내 빌드도 import 하므로
+  거기에 두면 사내 번들 소스맵에 값이 실린다.
 - 사내 빌드의 확장 ID: 기본은 `key` 를 제거해 설치 경로에서 파생된다(개발용 언팩 빌드와의 ID 충돌 회피).
   **고정 ID가 필요하면** 사내 전용 공개키를 넣어 빌드한다 — `H2F_INTERNAL_KEY=<공개키> pnpm --filter @html2figma/extension package:internal`
 - 사내 빌드도 공개 릴레이(`wss://html2figma-relay.onrender.com`)를 사용한다. 사내 페이지 캡처를 외부로

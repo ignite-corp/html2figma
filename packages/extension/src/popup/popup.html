@@ -167,6 +167,7 @@
       #status.success { color: #27ae60; }
       #status.error   { color: #e74c3c; }
 
+      /* monetization:start — 사내 빌드에서는 build.mjs 가 이 구간을 제거한다 */
       /* ── Paywall ── */
       .paywall {
         background: linear-gradient(140deg, #f6f7ff 0%, #fdfdff 100%);
@@ -219,6 +220,7 @@
         text-align: center;
         min-height: 13px;
       }
+      /* monetization:end */
     </style>
   </head>
   <body>
@@ -252,6 +254,7 @@
         <div id="status"></div>
       </div>
 
+      <!-- monetization:start — 사내 빌드에서는 build.mjs 가 이 구간을 제거한다 -->
       <!-- Paywall (쿼터 소진 시 표시) -->
       <div id="paywall" class="paywall hidden">
         <h2>이번 달 무료 변환을 모두 사용했어요</h2>
@@ -262,6 +265,7 @@
 
       <!-- Account -->
       <div id="account-line" class="account-line"></div>
+      <!-- monetization:end -->
 
     </div>
 

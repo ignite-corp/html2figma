@@ -1,8 +1,7 @@
 import { capturePage } from "./capture/index.js";
 import { getRelayUrl, sendToRelay } from "./bridge.js";
-import { isPro } from "./account.js";
-import { INTERNAL_BUILD } from "./config.js";
-import { consumeQuota, getQuota } from "./quota.js";
+// 과금 게이트. 사내 빌드에서는 build.mjs 가 captureGate.internal.ts 로 치환한다.
+import { checkCaptureAllowed, settleCapture } from "./captureGate.js";
 import type { BackgroundToPopup, PopupToBackground } from "./messages.js";
 
 chrome.runtime.onConnect.addListener((port) => {
@@ -29,21 +28,15 @@ chrome.runtime.onConnect.addListener((port) => {
 
     try {
       if (msg.kind === "capture") {
-        // 과금 게이트: 사내 빌드·Pro 는 무제한, 무료는 월 5회. 쿼터 소진 시 캡처를 시작하지 않는다.
-        const pro = INTERNAL_BUILD || (await isPro());
-        if (!pro && (await getQuota()).remaining <= 0) {
-          post({
-            kind: "error",
-            code: "quota-exceeded",
-            message: "이번 달 무료 변환 5회를 모두 사용했어요.",
-          });
+        const gate = await checkCaptureAllowed();
+        if (!gate.allowed) {
+          post({ kind: "error", ...gate.error! });
           return;
         }
 
         const doc = await capturePage(msg.tabId, { onProgress });
         const bridgeSent = await relay(doc);
-        // 실제로 Figma 에 전달된 경우에만 무료 횟수를 소비한다.
-        const remaining = pro ? null : bridgeSent ? await consumeQuota() : undefined;
+        const remaining = await settleCapture(gate, bridgeSent);
         post({ kind: "done", doc, bridgeSent, remaining });
       }
     } catch (e) {

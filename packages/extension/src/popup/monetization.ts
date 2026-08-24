@@ -6,7 +6,7 @@
  */
 import { getQuota } from "../quota.js";
 import { fetchStatus, getAccount, signIn, signOut } from "../account.js";
-import { UPGRADE_URL } from "../config.js";
+import { UPGRADE_URL } from "../billingConfig.js";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 

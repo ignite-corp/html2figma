@@ -34,13 +34,14 @@ mkdirSync(outdir, { recursive: true });
  */
 const internalStubs = {
   account: resolve(__dirname, "src/account.internal.ts"),
+  captureGate: resolve(__dirname, "src/captureGate.internal.ts"),
   monetization: resolve(__dirname, "src/popup/monetization.internal.ts"),
 };
 
 const stubForInternalPlugin = {
   name: "stub-monetization-for-internal",
   setup(b) {
-    b.onResolve({ filter: /(^|\/)(account|monetization)\.js$/ }, (args) => {
+    b.onResolve({ filter: /(^|\/)(account|captureGate|monetization)\.js$/ }, (args) => {
       const name = args.path.replace(/^.*\//, "").replace(/\.js$/, "");
       return { path: internalStubs[name] };
     });
@@ -51,7 +52,9 @@ const common = {
   bundle: true,
   format: "esm",
   target: "chrome110",
-  sourcemap: true,
+  // 사내 배포본에는 소스맵을 넣지 않는다. 소스맵에는 원본 전체(주석 포함)가 임베드되므로
+  // 결제 관련 설정·주석이 사내 zip 에 그대로 실려나간다. 디버깅은 개발 빌드로 한다.
+  sourcemap: !internal,
   logLevel: "info",
   define: { __INTERNAL__: internal ? "true" : "false" },
   plugins: internal ? [stubForInternalPlugin] : [],
@@ -71,6 +74,26 @@ cpSync(resolve(__dirname, "manifest.json"), resolve(outdir, "manifest.json"));
 cpSync(resolve(__dirname, "src/popup/popup.html"), resolve(outdir, "popup.html"));
 cpSync(resolve(__dirname, "icons"), resolve(outdir, "icons"), { recursive: true });
 cpSync(resolve(__dirname, "_locales"), resolve(outdir, "_locales"), { recursive: true });
+
+// popup.html 의 결제/로그인 마크업은 `monetization:start`~`monetization:end` 로 표시돼 있다.
+// 사내 빌드는 그 구간을 통째로 제거한다 — 숨겨두는 게 아니라 파일에서 사라져야
+// 사내 배포본에 결제 문구가 남지 않는다. 그 외 빌드는 마커 주석만 지운다.
+{
+  const popupPath = resolve(outdir, "popup.html");
+  const marker = "(?:\\/\\*|<!--)\\s*monetization:";
+  const close = "(?:\\*\\/|-->)";
+  const region = new RegExp(`[ \\t]*${marker}start[^\\n]*?${close}\\n[\\s\\S]*?[ \\t]*${marker}end\\s*${close}[ \\t]*\\n`, "g");
+  const markerOnly = new RegExp(`[ \\t]*${marker}(?:start|end)[^\\n]*?${close}[ \\t]*\\n`, "g");
+
+  const src = readFileSync(popupPath, "utf8");
+  const stripped = internal ? src.replace(region, "") : src.replace(markerOnly, "");
+  writeFileSync(popupPath, stripped);
+  if (internal) {
+    const removed = (src.match(region) ?? []).length;
+    if (removed === 0) throw new Error("popup.html 에서 monetization 구간을 찾지 못했습니다 (마커 확인 필요).");
+    console.log(`사내 패키징: popup.html 결제/로그인 마크업 ${removed}개 구간 제거`);
+  }
+}
 
 const manifestPath = resolve(outdir, "manifest.json");
 const readManifest = () => JSON.parse(readFileSync(manifestPath, "utf8"));
