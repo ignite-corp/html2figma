@@ -60,6 +60,24 @@ export interface TextNode extends BaseNode {
   type: "text";
   characters: string;
   text: TextStyle;
+  /**
+   * 인라인 서식(<b>/<span> 등)이 섞인 텍스트에서, 기본 스타일(text)과 다른 구간만
+   * range 스타일로 표현한다. start/end 는 characters 기준 문자 오프셋(end 는 배타적).
+   * 지정 시 플러그인이 setRange* 로 해당 구간에 개별 스타일을 적용한다.
+   */
+  segments?: TextSegment[];
+}
+
+export interface TextSegment {
+  start: number;
+  end: number;
+  fontFamily?: string;
+  fontStyle?: string;
+  fontWeight?: number;
+  fontSize?: number;
+  letterSpacing?: number;
+  color?: RGBA;
+  textDecoration?: "none" | "underline" | "strikethrough";
 }
 
 export interface ImageNode extends BaseNode {

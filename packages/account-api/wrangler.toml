@@ -1,0 +1,21 @@
+# html2figma 계정/구독 API.
+#
+# 배포 전 설정:
+#   wrangler secret put GOOGLE_CLIENT_SECRET  # Google OAuth 웹 클라이언트 secret
+#   wrangler secret put PADDLE_WEBHOOK_SECRET # Paddle 웹훅 서명 secret
+#   wrangler secret put SESSION_SIGNING_KEY   # 세션/체크아웃 토큰 서명 키 (임의의 긴 랜덤 문자열)
+# GOOGLE_CLIENT_ID 는 공개값이므로 아래 [vars] 에 기입.
+name = "html2figma-account"
+main = "src/worker.ts"
+compatibility_date = "2024-09-23"
+
+[vars]
+GOOGLE_CLIENT_ID = "58872917568-mg7vvbht3ca7rci5slen410q0np29eus.apps.googleusercontent.com"
+
+[[durable_objects.bindings]]
+name = "ACCOUNT"
+class_name = "AccountDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["AccountDO"]

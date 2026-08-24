@@ -115,6 +115,8 @@ bridgeConnectBtn.addEventListener("click", () => {
       doImport(msg.payload as H2FFile);
     } else if (msg.type === "h2f-chunk") {
       receiveChunk(msg);
+    } else if (msg.type === "error") {
+      setStatus(`릴레이 오류: ${msg.message}`);
     }
   };
   ws.onclose = () => {

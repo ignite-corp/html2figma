@@ -100,6 +100,28 @@ function maxWidthOf(node: H2FNode): number {
 }
 
 /**
+ * 실제로 보이는(클립 안 된) "블록형" 콘텐츠의 최대 우측 끝(x+width)을 구한다.
+ * 사이드바 등으로 우측으로 밀린 넓은 테이블처럼, 폭 자체는 루트보다 좁아도 우측으로
+ * 삐져나온 콘텐츠의 오른쪽 끝을 흰 배경이 덮게 하기 위함이다. minWidth 미만의 작은
+ * 오버레이(툴팁·드롭다운)는 제외해 폭이 불필요하게 커지는 것을 막는다. overflow 를
+ * 자르는 subtree 는 빌더에서 이미 제거되므로 오프스크린 bleed 는 자연히 빠진다.
+ */
+function maxBlockRight(node: H2FNode, minWidth: number): number {
+  let r = -Infinity;
+  if (node.layout && node.layout.width >= minWidth) {
+    r = node.layout.x + node.layout.width;
+  }
+  const kids = (node as { children?: H2FNode[] }).children;
+  if (Array.isArray(kids)) {
+    for (const c of kids) {
+      const cr = maxBlockRight(c, minWidth);
+      if (cr > r) r = cr;
+    }
+  }
+  return r;
+}
+
+/**
  * 프레임 폭을 자식들을 담을 수 있도록 넓힌다(bottom-up).
  * body 나 wrapper 처럼 자기보다 넓은 자손(min-width 고정 레이아웃 등)을 가진 컨테이너가
  * 실제로는 배경이 전체 폭을 덮는데도 좁게(뷰포트-스크롤바) 잡히는 문제를 바로잡는다.
@@ -225,9 +247,15 @@ export async function capturePage(
     //    넓을 때 콘텐츠가 잘린다.
     // 해결: 트리에서 가장 넓은 노드 폭(대개 full-width 레이아웃 컨테이너)을 레이아웃 폭으로 보고
     //       뷰포트와 스크롤 폭(bleed 상한) 사이로 클램프한다. 좁은 bleed 요소는 폭이 작아 제외됨.
+    //  - 추가: 사이드바 등으로 우측으로 밀린 넓은 테이블은 폭(width) 자체는 루트보다 좁아도
+    //    오른쪽 끝(x+width)이 루트를 넘어설 수 있다. 이 경우 흰 배경이 못 덮어 캔버스(검정)가
+    //    비치므로, 넓은 블록형 콘텐츠의 최대 우측 끝까지 루트 폭을 넓힌다(fullWidth 상한).
     if (root.type === "frame") {
       const maxNodeWidth = maxWidthOf(root);
-      const layoutWidth = Math.min(maxNodeWidth, fullWidth);
+      const contentRight = maxBlockRight(root, root.layout.width * 0.3);
+      const contentWidth =
+        contentRight > -Infinity ? contentRight - root.layout.x : 0;
+      const layoutWidth = Math.min(Math.max(maxNodeWidth, contentWidth), fullWidth);
       root.layout = {
         ...root.layout,
         width: Math.max(root.layout.width, vp.width, layoutWidth),

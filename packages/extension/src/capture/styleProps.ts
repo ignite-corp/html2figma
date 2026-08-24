@@ -63,6 +63,10 @@ export const COMPUTED_STYLES = [
 
   // 폼 컨트롤(radio/checkbox) accent 색 재구성용
   "accent-color",
+  // appearance:none 커스텀 컨트롤은 브라우저가 네이티브 외형을 그리지 않으므로
+  // 합성(검은 링 등)을 건너뛰기 위한 판별용
+  "appearance",
+  "-webkit-appearance",
 ] as const;
 
 export type ComputedStyleName = (typeof COMPUTED_STYLES)[number];

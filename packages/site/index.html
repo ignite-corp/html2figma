@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>html2figma — 웹페이지를 그대로, 편집 가능한 Figma로</title>
+  <meta name="description" content="스크린샷이 아닙니다. 웹페이지를 실제 프레임·텍스트·벡터 노드로 재구성해 Figma에서 바로 편집하세요. 매달 5회 무료, 가입 불필요." />
+  <meta property="og:title" content="html2figma — 웹페이지를 그대로, 편집 가능한 Figma로" />
+  <meta property="og:description" content="스크린샷이 아닌 실제 Figma 레이어. 매달 5회 무료, 가입 불필요." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://html2figma.pages.dev/" />
+  <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%236c7bff"/><stop offset=".5" stop-color="%23a78bfa"/><stop offset="1" stop-color="%2322d3ee"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(%23g)"/><text x="32" y="41" font-family="monospace" font-size="24" font-weight="bold" fill="white" text-anchor="middle">&lt;/&gt;</text></svg>' />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <style>
+    /* ───────────────────────── base ───────────────────────── */
+    :root {
+      --bg: #07070d;
+      --bg2: #0c0c16;
+      --panel: rgba(255,255,255,0.04);
+      --panel2: rgba(255,255,255,0.07);
+      --line: rgba(255,255,255,0.09);
+      --line2: rgba(255,255,255,0.16);
+      --tx: #f2f2f8;
+      --tx2: #a7a7bc;
+      --tx3: #63637a;
+      --acc: #6c7bff;
+      --acc2: #a78bfa;
+      --acc3: #22d3ee;
+      --pink: #f472b6;
+      --grad: linear-gradient(120deg, #6c7bff, #a78bfa 45%, #22d3ee);
+      --r: 18px;
+      --loop: 14s; /* 데모 애니메이션 마스터 루프 */
+      --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0; background: var(--bg); color: var(--tx);
+      font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.6; -webkit-font-smoothing: antialiased; overflow-x: hidden;
+    }
+    a { color: inherit; }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+    /* aurora 배경 */
+    .aurora { position: fixed; inset: 0; z-index: -2; overflow: hidden; pointer-events: none; }
+    .aurora i { position: absolute; border-radius: 50%; filter: blur(90px); opacity: .38; }
+    .aurora i:nth-child(1) { width: 640px; height: 640px; background: #4c5bff; top: -260px; left: -140px; animation: drift 22s ease-in-out infinite alternate; }
+    .aurora i:nth-child(2) { width: 520px; height: 520px; background: #7c3aed; top: -160px; right: -160px; animation: drift 26s ease-in-out infinite alternate-reverse; }
+    .aurora i:nth-child(3) { width: 480px; height: 480px; background: #0891b2; top: 480px; left: 42%; opacity: .22; animation: drift 30s ease-in-out infinite alternate; }
+    @keyframes drift { to { transform: translate(60px, 40px) scale(1.12); } }
+    .grid-bg { position: fixed; inset: 0; z-index: -1; pointer-events: none;
+      background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 30%, transparent 75%);
+    }
+
+    /* ───────────────────────── nav ───────────────────────── */
+    .nav { position: sticky; top: 14px; z-index: 50; }
+    .nav .bar {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(12,12,22,.72); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--line); border-radius: 999px; padding: 10px 12px 10px 16px;
+    }
+    .logo { width: 28px; height: 28px; border-radius: 8px; background: var(--grad); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 10px; letter-spacing: -.5px; }
+    .brand { font-weight: 800; font-size: 15px; letter-spacing: -.2px; }
+    .nav nav { margin-left: auto; display: flex; gap: 4px; align-items: center; }
+    .nav nav a { font-size: 13.5px; color: var(--tx2); text-decoration: none; padding: 7px 12px; border-radius: 999px; transition: .2s; }
+    .nav nav a:hover { color: var(--tx); background: var(--panel2); }
+    .nav .go {
+      color: #0a0a14 !important; background: #fff !important; font-weight: 700;
+    }
+
+    /* ───────────────────────── hero ───────────────────────── */
+    .hero { text-align: center; padding: 88px 0 40px; }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--tx2);
+      border: 1px solid var(--line2); border-radius: 999px; padding: 7px 14px;
+      background: var(--panel); margin-bottom: 26px; text-decoration: none; transition: .2s;
+    }
+    .eyebrow:hover { border-color: var(--acc); color: var(--tx); }
+    .eyebrow b { color: var(--tx); font-weight: 700; }
+    .eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; box-shadow: 0 0 10px #34d399; animation: pulse 2s infinite; }
+    @keyframes pulse { 50% { opacity: .4; } }
+    h1 {
+      margin: 0 auto 20px; max-width: 820px;
+      font-size: clamp(38px, 6.4vw, 68px); line-height: 1.12; letter-spacing: -0.03em; font-weight: 800;
+    }
+    h1 .g { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .hero .sub { color: var(--tx2); font-size: clamp(15px, 2.2vw, 18px); max-width: 560px; margin: 0 auto 34px; }
+    .ctas { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 700; font-size: 15px;
+      padding: 14px 26px; border-radius: 14px; transition: .2s; border: 1px solid transparent;
+    }
+    .btn.primary { background: #fff; color: #0a0a14; box-shadow: 0 0 0 0 rgba(108,123,255,0); }
+    .btn.primary:hover { transform: translateY(-2px); box-shadow: 0 8px 40px -8px rgba(108,123,255,.65); }
+    .btn.ghost { background: var(--panel); border-color: var(--line2); color: var(--tx); }
+    .btn.ghost:hover { background: var(--panel2); border-color: var(--acc); }
+    .hero .note { margin-top: 18px; font-size: 13px; color: var(--tx3); }
+    .hero .note b { color: var(--tx2); }
+    .hero .note a { color: var(--acc); text-decoration: underline; text-underline-offset: 2px; }
+    .hero .note a:hover { color: var(--tx); }
+
+    /* ───────────────────────── marquee ───────────────────────── */
+    .marquee { border-block: 1px solid var(--line); padding: 14px 0; margin: 56px 0 0; overflow: hidden; position: relative; }
+    .marquee::before, .marquee::after { content: ""; position: absolute; top: 0; bottom: 0; width: 120px; z-index: 1; }
+    .marquee::before { left: 0; background: linear-gradient(90deg, var(--bg), transparent); }
+    .marquee::after { right: 0; background: linear-gradient(-90deg, var(--bg), transparent); }
+    .marquee .track { display: flex; gap: 40px; width: max-content; animation: scroll 30s linear infinite; }
+    @keyframes scroll { to { transform: translateX(-50%); } }
+    .marquee span { font-family: var(--mono); font-size: 12.5px; color: var(--tx3); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+    .marquee span::before { content: "◆"; color: var(--acc); margin-right: 40px; font-size: 8px; vertical-align: 2px; }
+
+    /* ───────────────────────── demo player ───────────────────────── */
+    .demo-sec { padding: 84px 0 20px; }
+    .sec-head { text-align: center; margin-bottom: 40px; }
+    .sec-head .tag { font-family: var(--mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--acc); }
+    .sec-head h2 { font-size: clamp(26px, 4vw, 40px); margin: 12px 0 10px; letter-spacing: -.02em; font-weight: 800; }
+    .sec-head p { color: var(--tx2); margin: 0 auto; max-width: 520px; font-size: 15px; }
+
+    .player {
+      position: relative; border-radius: 22px; overflow: hidden;
+      border: 1px solid var(--line2);
+      background: #0a0a14;
+      box-shadow: 0 30px 90px -30px rgba(108,123,255,.35), 0 0 0 1px rgba(255,255,255,.03) inset;
+    }
+    .player .glow { position: absolute; inset: -1px; border-radius: 22px; padding: 1px; pointer-events: none;
+      background: linear-gradient(120deg, rgba(108,123,255,.55), transparent 30%, transparent 70%, rgba(34,211,238,.45));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+    .viewport { position: relative; width: 100%; aspect-ratio: 960 / 560; overflow: hidden; }
+    .stage { position: absolute; top: 0; left: 0; width: 960px; height: 560px; transform-origin: top left; }
+
+    /* 씬 공통 */
+    .scene { position: absolute; inset: 24px 24px 64px; display: flex; gap: 20px; }
+    .pane { flex: 1; border-radius: 14px; border: 1px solid var(--line2); background: #101020; overflow: hidden; position: relative; display: flex; flex-direction: column; }
+
+    /* 브라우저 패널 */
+    .bw .top { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); background: #151528; }
+    .bw .dots i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; }
+    .bw .dots i:nth-child(1){background:#ff5f57}.bw .dots i:nth-child(2){background:#febc2e}.bw .dots i:nth-child(3){background:#28c840}
+    .bw .url { flex: 1; font-family: var(--mono); font-size: 11px; color: var(--tx3); background: #0d0d1c; border: 1px solid var(--line); border-radius: 7px; padding: 5px 10px; }
+    .ext-ico { width: 24px; height: 24px; border-radius: 7px; background: var(--grad); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 8px; font-weight: 800; position: relative; animation: extPulse var(--loop) linear infinite; }
+    @keyframes extPulse { 0%,3% { box-shadow: 0 0 0 0 rgba(108,123,255,0); } 5% { box-shadow: 0 0 0 8px rgba(108,123,255,.45); } 8%,100% { box-shadow: 0 0 0 0 rgba(108,123,255,0); } }
+    .bw .page { flex: 1; padding: 18px; position: relative; }
+
+    /* 스켈레톤 요소 (캡처 대상) */
+    .sk { border-radius: 7px; background: #1d1d34; }
+    .bw .p-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+    .bw .p-nav .lg { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg,#6c7bff,#a78bfa); }
+    .bw .p-nav .ln { height: 8px; width: 44px; }
+    .bw .p-hero { margin-bottom: 16px; }
+    .bw .t1 { height: 20px; width: 78%; margin-bottom: 9px; background: linear-gradient(90deg,#34345c,#2a2a4a); }
+    .bw .t2 { height: 20px; width: 52%; margin-bottom: 12px; background: linear-gradient(90deg,#34345c,#2a2a4a); }
+    .bw .t3 { height: 9px; width: 64%; margin-bottom: 14px; }
+    .bw .p-cta { height: 26px; width: 96px; border-radius: 9px; background: linear-gradient(120deg,#6c7bff,#8b5cf6); }
+    .bw .p-img { height: 84px; border-radius: 10px; margin: 16px 0; background: linear-gradient(120deg,#173a5e,#3b2a6e 55%,#164e63); position: relative; overflow: hidden; }
+    .bw .p-img::after { content:""; position:absolute; inset:0; background: radial-gradient(circle at 70% 30%, rgba(255,255,255,.16), transparent 55%); }
+    .bw .p-cards { display: flex; gap: 10px; }
+    .bw .card { flex: 1; border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+    .bw .card .th { height: 34px; border-radius: 6px; margin-bottom: 8px; background: #232342; }
+    .bw .card .l1 { height: 7px; width: 80%; margin-bottom: 6px; }
+    .bw .card .l2 { height: 7px; width: 55%; }
+
+    /* 스캔라인 + 하이라이트 */
+    .scanline { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--grad); box-shadow: 0 0 24px 4px rgba(108,123,255,.8); opacity: 0; animation: scan var(--loop) linear infinite; }
+    @keyframes scan { 0%,5.5% { top: 0; opacity: 0; } 6.5% { opacity: 1; } 19% { top: calc(100% - 3px); opacity: 1; } 21%,100% { top: calc(100% - 3px); opacity: 0; } }
+    .fl { animation-duration: var(--loop); animation-iteration-count: infinite; animation-timing-function: linear; }
+    .fl-1 { animation-name: flash1; } .fl-2 { animation-name: flash2; } .fl-3 { animation-name: flash3; } .fl-4 { animation-name: flash4; }
+    @keyframes flash1 { 0%,6% { box-shadow: none; } 7%,20% { box-shadow: 0 0 0 1.5px var(--acc3); } 22%,100% { box-shadow: none; } }
+    @keyframes flash2 { 0%,8.5% { box-shadow: none; } 9.5%,20% { box-shadow: 0 0 0 1.5px var(--acc3); } 22%,100% { box-shadow: none; } }
+    @keyframes flash3 { 0%,12% { box-shadow: none; } 13%,20% { box-shadow: 0 0 0 1.5px var(--acc3); } 22%,100% { box-shadow: none; } }
+    @keyframes flash4 { 0%,15.5% { box-shadow: none; } 16.5%,20% { box-shadow: 0 0 0 1.5px var(--acc3); } 22%,100% { box-shadow: none; } }
+
+    /* 전송 패킷 */
+    .packet {
+      position: absolute; z-index: 6; top: 46%; left: 40%;
+      font-family: var(--mono); font-size: 11px; font-weight: 700; color: #0a0a14;
+      background: var(--grad); border-radius: 999px; padding: 7px 14px;
+      opacity: 0; animation: fly var(--loop) linear infinite;
+      box-shadow: 0 6px 30px rgba(108,123,255,.6);
+    }
+    @keyframes fly {
+      0%,21% { opacity: 0; transform: translate(0,0) scale(.6); }
+      23% { opacity: 1; transform: translate(0,0) scale(1); }
+      30% { opacity: 1; transform: translate(310px,-30px) scale(1); }
+      32%,100% { opacity: 0; transform: translate(340px,-40px) scale(.6); }
+    }
+
+    /* Figma 패널 */
+    .fg .top { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); background: #151528; font-size: 11.5px; color: var(--tx2); }
+    .fg .top .fig { width: 16px; height: 16px; border-radius: 4px; background: conic-gradient(from 90deg, #f24e1e, #ff7262, #a259ff, #1abcfe, #0acf83, #f24e1e); }
+    .fg .code { margin-left: auto; font-family: var(--mono); font-size: 10.5px; color: var(--acc3); border: 1px solid rgba(34,211,238,.35); border-radius: 6px; padding: 3px 8px; animation: codeBlink var(--loop) linear infinite; }
+    @keyframes codeBlink { 0%,21% { background: transparent; } 24%,29% { background: rgba(34,211,238,.16); } 33%,100% { background: transparent; } }
+    .fg .body { flex: 1; display: flex; }
+    .fg .layers { width: 128px; border-right: 1px solid var(--line); padding: 10px 8px; font-size: 10.5px; color: var(--tx2); }
+    .fg .layers .hd { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; color: var(--tx3); margin: 2px 4px 8px; }
+    .lyr { display: flex; align-items: center; gap: 6px; padding: 4.5px 6px; border-radius: 6px; opacity: 0; animation-duration: var(--loop); animation-iteration-count: infinite; animation-timing-function: linear; }
+    .lyr i { width: 9px; height: 9px; border: 1.4px solid var(--tx3); border-radius: 2.5px; flex: none; }
+    .lyr.txt i { border: none; font-style: normal; font-family: var(--mono); font-size: 9px; color: var(--tx3); width: auto; height: auto; }
+    .lyr-1 { animation-name: lyrIn1; } .lyr-2 { animation-name: lyrIn2; } .lyr-3 { animation-name: lyrIn3; } .lyr-4 { animation-name: lyrIn4; } .lyr-5 { animation-name: lyrIn5; }
+    @keyframes lyrIn1 { 0%,32% { opacity: 0; transform: translateX(-6px); } 34%,100% { opacity: 1; transform: none; } }
+    @keyframes lyrIn2 { 0%,35% { opacity: 0; transform: translateX(-6px); } 37%,100% { opacity: 1; transform: none; } }
+    @keyframes lyrIn3 { 0%,38% { opacity: 0; transform: translateX(-6px); } 40%,100% { opacity: 1; transform: none; } }
+    @keyframes lyrIn4 { 0%,41% { opacity: 0; transform: translateX(-6px); } 43%,100% { opacity: 1; transform: none; } }
+    @keyframes lyrIn5 { 0%,44% { opacity: 0; transform: translateX(-6px); } 46%,100% { opacity: 1; transform: none; } }
+    .lyr-3 { background: rgba(108,123,255,0); animation-name: lyrIn3sel; }
+    @keyframes lyrIn3sel {
+      0%,38% { opacity: 0; transform: translateX(-6px); background: transparent; }
+      40% { opacity: 1; transform: none; }
+      59% { background: transparent; color: var(--tx2); }
+      62%,88% { opacity: 1; background: rgba(108,123,255,.22); color: #cdd3ff; }
+      89%,100% { opacity: 1; background: transparent; }
+    }
+
+    .fg .canvas { flex: 1; position: relative; padding: 14px; background:
+      linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);
+      background-size: 18px 18px; }
+    .rb { border-radius: 6px; background: #1d1d34; opacity: 0; animation-duration: var(--loop); animation-iteration-count: infinite; animation-timing-function: linear; }
+    .rb-1 { animation-name: rbIn1; } .rb-2 { animation-name: rbIn2; } .rb-3 { animation-name: rbIn3; } .rb-4 { animation-name: rbIn4; } .rb-5 { animation-name: rbIn5; }
+    @keyframes rbIn1 { 0%,33% { opacity: 0; transform: scale(.9); } 35.5%,100% { opacity: 1; transform: none; } }
+    @keyframes rbIn2 { 0%,36% { opacity: 0; transform: scale(.9); } 38.5%,100% { opacity: 1; transform: none; } }
+    @keyframes rbIn3 { 0%,39% { opacity: 0; transform: scale(.9); } 41.5%,100% { opacity: 1; transform: none; } }
+    @keyframes rbIn4 { 0%,42% { opacity: 0; transform: scale(.9); } 44.5%,100% { opacity: 1; transform: none; } }
+    @keyframes rbIn5 { 0%,45% { opacity: 0; transform: scale(.9); } 47.5%,100% { opacity: 1; transform: none; } }
+    .fg .f-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+    .fg .f-nav .lg { width: 22px; height: 22px; border-radius: 7px; background: linear-gradient(135deg,#6c7bff,#a78bfa); }
+    .fg .f-nav .ln { height: 7px; width: 38px; }
+    .fg .f-t1 { height: 17px; width: 76%; margin-bottom: 8px; background: linear-gradient(90deg,#34345c,#2a2a4a); position: relative; animation-name: rbIn2, tint; animation-duration: var(--loop), var(--loop); animation-iteration-count: infinite, infinite; animation-timing-function: linear, linear; }
+    @keyframes tint { 0%,68% { filter: none; } 71%,100% { filter: hue-rotate(95deg) saturate(2.4) brightness(1.35); } }
+    .fg .f-t2 { height: 8px; width: 58%; margin-bottom: 12px; }
+    .fg .f-img { height: 64px; border-radius: 8px; margin-bottom: 12px; background: linear-gradient(120deg,#173a5e,#3b2a6e 55%,#164e63); }
+    .fg .f-cards { display: flex; gap: 8px; }
+    .fg .f-card { flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+    .fg .f-card .th { height: 24px; border-radius: 5px; margin-bottom: 6px; background: #232342; }
+    .fg .f-card .l1 { height: 6px; width: 78%; }
+
+    /* 선택 박스 + 스와치 */
+    .selbox { position: absolute; border: 1.6px solid #4c9aff; opacity: 0; pointer-events: none; animation: selIn var(--loop) linear infinite; }
+    .selbox i { position: absolute; width: 7px; height: 7px; background: #fff; border: 1.6px solid #4c9aff; border-radius: 2px; }
+    .selbox i:nth-child(1){top:-4px;left:-4px}.selbox i:nth-child(2){top:-4px;right:-4px}.selbox i:nth-child(3){bottom:-4px;left:-4px}.selbox i:nth-child(4){bottom:-4px;right:-4px}
+    @keyframes selIn { 0%,60% { opacity: 0; } 62%,88% { opacity: 1; } 90%,100% { opacity: 0; } }
+    .swatch { position: absolute; display: flex; gap: 6px; background: #1b1b30; border: 1px solid var(--line2); border-radius: 10px; padding: 8px; opacity: 0; animation: swIn var(--loop) linear infinite; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+    .swatch i { width: 16px; height: 16px; border-radius: 5px; }
+    .swatch i:nth-child(1){background:#6c7bff}.swatch i:nth-child(2){background:#f472b6; outline: 2px solid #fff; outline-offset: 1.5px;}.swatch i:nth-child(3){background:#34d399}.swatch i:nth-child(4){background:#fbbf24}
+    @keyframes swIn { 0%,64% { opacity: 0; transform: translateY(6px); } 66%,80% { opacity: 1; transform: none; } 83%,100% { opacity: 0; } }
+
+    /* 완료 배지 */
+    .done { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%) translateY(8px); display: flex; align-items: center; gap: 7px;
+      font-size: 11.5px; font-weight: 700; color: #052e1c; background: #34d399; border-radius: 999px; padding: 6px 14px; opacity: 0; animation: doneIn var(--loop) linear infinite; }
+    @keyframes doneIn { 0%,84% { opacity: 0; transform: translateX(-50%) translateY(8px); } 86%,96% { opacity: 1; transform: translateX(-50%) translateY(0); } 98%,100% { opacity: 0; } }
+
+    /* 커서 */
+    .cursor { position: absolute; z-index: 9; width: 15px; height: 15px; opacity: 0; animation: curMove var(--loop) linear infinite; filter: drop-shadow(0 2px 6px rgba(0,0,0,.6)); }
+    @keyframes curMove {
+      0% { opacity: 0; left: 34%; top: 60%; }
+      2% { opacity: 1; }
+      4.5% { left: 45.2%; top: 8.5%; }   /* 익스텐션 아이콘 */
+      6% { left: 45.2%; top: 8.5%; transform: scale(.82); }
+      7% { transform: scale(1); }
+      20% { opacity: 1; left: 45.2%; top: 8.5%; }
+      24% { opacity: 0; }
+      56% { opacity: 0; left: 70%; top: 42%; }
+      58% { opacity: 1; }
+      61% { left: 68%; top: 30%; }      /* Figma 제목 클릭 */
+      62.5% { transform: scale(.82); }
+      63.5% { transform: scale(1); }
+      66% { left: 71%; top: 44%; }      /* 스와치로 이동 */
+      69% { left: 71.8%; top: 46.5%; transform: scale(.82); }
+      70% { transform: scale(1); }
+      80% { opacity: 1; left: 71.8%; top: 46.5%; }
+      83%,100% { opacity: 0; }
+    }
+
+    /* 플레이어 하단 바 */
+    .pbar { position: absolute; left: 0; right: 0; bottom: 0; height: 40px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-top: 1px solid var(--line); background: rgba(10,10,20,.85); backdrop-filter: blur(8px); }
+    .pbar .live { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 10px; letter-spacing: .12em; color: var(--tx2); }
+    .pbar .live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #f43f5e; animation: pulse 1.4s infinite; }
+    .prog { flex: 1; height: 4px; border-radius: 99px; background: rgba(255,255,255,.1); overflow: hidden; }
+    .prog i { display: block; height: 100%; width: 0; background: var(--grad); animation: progGo var(--loop) linear infinite; }
+    @keyframes progGo { from { width: 0; } to { width: 100%; } }
+    .pbar .time { font-family: var(--mono); font-size: 10.5px; color: var(--tx3); }
+
+    /* 캡션 */
+    .caps { position: absolute; left: 0; right: 0; bottom: 52px; text-align: center; pointer-events: none; }
+    .cap { position: absolute; left: 0; right: 0; bottom: 0; font-size: 13.5px; font-weight: 600; color: var(--tx); opacity: 0; animation-duration: var(--loop); animation-iteration-count: infinite; animation-timing-function: linear; }
+    .cap b { color: var(--acc3); font-family: var(--mono); font-weight: 700; margin-right: 8px; font-size: 12px; }
+    .cap-1 { animation-name: cap1; } .cap-2 { animation-name: cap2; } .cap-3 { animation-name: cap3; } .cap-4 { animation-name: cap4; }
+    @keyframes cap1 { 0%,3% { opacity: 0; transform: translateY(6px); } 5%,19% { opacity: 1; transform: none; } 21%,100% { opacity: 0; } }
+    @keyframes cap2 { 0%,21% { opacity: 0; transform: translateY(6px); } 23%,30% { opacity: 1; transform: none; } 32%,100% { opacity: 0; } }
+    @keyframes cap3 { 0%,32% { opacity: 0; transform: translateY(6px); } 34%,58% { opacity: 1; transform: none; } 60%,100% { opacity: 0; } }
+    @keyframes cap4 { 0%,60% { opacity: 0; transform: translateY(6px); } 62%,95% { opacity: 1; transform: none; } 97%,100% { opacity: 0; } }
+
+    /* ───────────────────────── bento features ───────────────────────── */
+    .features { padding: 90px 0 30px; }
+    .bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+    .cell {
+      grid-column: span 2; border: 1px solid var(--line); border-radius: var(--r);
+      background: linear-gradient(180deg, var(--panel), rgba(255,255,255,.015));
+      padding: 26px 24px; position: relative; overflow: hidden; transition: .25s;
+    }
+    .cell:hover { border-color: var(--line2); transform: translateY(-3px); }
+    .cell.w3 { grid-column: span 3; }
+    .cell .ic { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; background: var(--panel2); border: 1px solid var(--line); }
+    .cell .ic svg { width: 19px; height: 19px; display: block; }
+    .cell .ic.i { background: rgba(108,123,255,.14); border-color: rgba(108,123,255,.3); color: #97a3ff; }
+    .cell .ic.v { background: rgba(167,139,250,.14); border-color: rgba(167,139,250,.3); color: #c7b5fd; }
+    .cell .ic.c { background: rgba(34,211,238,.14); border-color: rgba(34,211,238,.3); color: #6fe9f7; }
+    .cell h3 { margin: 0 0 7px; font-size: 16.5px; letter-spacing: -.01em; }
+    .cell p { margin: 0; color: var(--tx2); font-size: 13.5px; line-height: 1.65; }
+    .cell .shine { position: absolute; top: -60%; right: -30%; width: 240px; height: 240px; border-radius: 50%; filter: blur(60px); opacity: .16; pointer-events: none; }
+
+    /* ───────────────────────── how ───────────────────────── */
+    .how { padding: 90px 0 30px; }
+    .hsteps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; counter-reset: s; }
+    .hstep { border: 1px solid var(--line); border-radius: var(--r); padding: 26px 24px; background: var(--panel); position: relative; }
+    .hstep::before { counter-increment: s; content: "0" counter(s); font-family: var(--mono); font-size: 12px; color: var(--acc); letter-spacing: .1em; }
+    .hstep h3 { margin: 12px 0 8px; font-size: 17px; }
+    .hstep p { margin: 0; color: var(--tx2); font-size: 13.5px; }
+    .hstep .k { font-family: var(--mono); font-size: 12px; color: var(--acc3); background: rgba(34,211,238,.08); border: 1px solid rgba(34,211,238,.25); padding: 2px 7px; border-radius: 6px; }
+
+    /* ───────────────────────── pricing ───────────────────────── */
+    .pricing { padding: 90px 0 30px; }
+    .plans { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 760px; margin: 0 auto; }
+    .plan { border: 1px solid var(--line); border-radius: 22px; padding: 32px 30px; background: var(--panel); position: relative; }
+    .plan.pro { border-color: transparent; background: linear-gradient(#101024, #101024) padding-box, var(--grad) border-box; border: 1px solid transparent; box-shadow: 0 24px 80px -30px rgba(124,58,237,.5); }
+    .plan .name { font-size: 14px; font-weight: 700; color: var(--tx2); letter-spacing: .02em; }
+    .plan.pro .name { color: #cdd3ff; }
+    .plan .price { font-size: 44px; font-weight: 800; letter-spacing: -.03em; margin: 10px 0 2px; }
+    .plan .price small { font-size: 15px; color: var(--tx3); font-weight: 500; }
+    .plan .per { font-size: 12.5px; color: var(--tx3); margin-bottom: 22px; }
+    .plan ul { list-style: none; margin: 0 0 26px; padding: 0; }
+    .plan li { font-size: 14px; color: var(--tx2); padding: 7px 0; display: flex; gap: 10px; align-items: flex-start; }
+    .plan li::before { content: "✓"; color: var(--acc3); font-weight: 800; flex: none; }
+    .plan .go { display: block; text-align: center; text-decoration: none; font-weight: 700; font-size: 14.5px; padding: 13px; border-radius: 13px; transition: .2s; }
+    .plan.free .go { border: 1px solid var(--line2); color: var(--tx); }
+    .plan.free .go:hover { background: var(--panel2); }
+    .plan.pro .go { background: #fff; color: #0a0a14; }
+    .plan.pro .go:hover { transform: translateY(-2px); box-shadow: 0 8px 34px -8px rgba(108,123,255,.7); }
+    .plan .badge { position: absolute; top: -13px; right: 24px; background: var(--grad); color: #fff; font-size: 11.5px; font-weight: 800; border-radius: 999px; padding: 5px 13px; letter-spacing: .02em; }
+    .coupon { max-width: 760px; margin: 16px auto 0; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
+      border: 1px dashed rgba(244,114,182,.45); border-radius: 14px; padding: 13px 18px; font-size: 13.5px; color: var(--tx2); background: rgba(244,114,182,.05); }
+    .coupon code { font-family: var(--mono); color: var(--pink); font-weight: 700; background: rgba(244,114,182,.12); padding: 2px 9px; border-radius: 7px; }
+
+    /* ───────────────────────── faq ───────────────────────── */
+    .faq { padding: 90px 0 40px; max-width: 720px; margin: 0 auto; }
+    .faq details { border-bottom: 1px solid var(--line); }
+    .faq summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 20px 4px; font-weight: 600; font-size: 15.5px; }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary::after { content: "+"; font-size: 20px; color: var(--tx3); transition: .2s; flex: none; }
+    .faq details[open] summary::after { transform: rotate(45deg); color: var(--acc); }
+    .faq .a { padding: 0 4px 22px; color: var(--tx2); font-size: 14px; }
+
+    /* ───────────────────────── final cta / footer ───────────────────────── */
+    .final { text-align: center; padding: 80px 0 100px; }
+    .final .box { border: 1px solid var(--line2); border-radius: 28px; padding: 70px 30px; position: relative; overflow: hidden;
+      background: radial-gradient(ellipse 70% 90% at 50% -10%, rgba(108,123,255,.22), transparent 60%), var(--panel); }
+    .final h2 { font-size: clamp(26px, 4.4vw, 42px); margin: 0 0 14px; letter-spacing: -.02em; font-weight: 800; }
+    .final p { color: var(--tx2); margin: 0 0 30px; }
+    footer { border-top: 1px solid var(--line); padding: 34px 0 50px; font-size: 12.5px; color: var(--tx3); }
+    footer .cols { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; align-items: center; }
+    footer a { color: var(--tx2); text-decoration: none; }
+    footer a:hover { color: var(--tx); }
+    footer .links { display: flex; gap: 18px; }
+
+    /* scroll reveal */
+    .rv { opacity: 0; transform: translateY(22px); transition: opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1); }
+    .rv.in { opacity: 1; transform: none; }
+
+    @media (max-width: 880px) {
+      .bento { grid-template-columns: repeat(2, 1fr); }
+      .cell, .cell.w3 { grid-column: span 2; }
+      .hsteps, .plans { grid-template-columns: 1fr; }
+      .nav nav a:not(.go) { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .stage *, .marquee .track, .aurora i { animation-play-state: paused !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="aurora"><i></i><i></i><i></i></div>
+  <div class="grid-bg"></div>
+
+  <div class="nav wrap">
+    <div class="bar">
+      <div class="logo">&lt;/&gt;</div>
+      <span class="brand">html2figma</span>
+      <nav>
+        <a href="#demo">데모</a>
+        <a href="#features">기능</a>
+        <a href="#pricing">요금</a>
+        <a class="go" href="https://chromewebstore.google.com/detail/cgjbnhacnalehnfkkkoilmglhiigbjmf" target="_blank" rel="noopener">Chrome에 추가</a>
+      </nav>
+    </div>
+  </div>
+
+  <!-- ───────── hero ───────── -->
+  <section class="hero wrap">
+    <a class="eyebrow" href="/upgrade.html?dc=LAUNCH50"><span class="dot"></span> 런칭 이벤트 — 코드 <b>LAUNCH50</b> 으로 3개월 50% 할인 →</a>
+    <h1>웹페이지를 그대로,<br /><span class="g">편집 가능한 Figma</span>로.</h1>
+    <p class="sub">스크린샷이 아닙니다. 실제 프레임·텍스트·벡터 노드로 재구성되어 Figma에서 색상, 문구, 레이아웃을 바로 수정할 수 있어요.</p>
+    <div class="ctas">
+      <a class="btn primary" href="https://chromewebstore.google.com/detail/cgjbnhacnalehnfkkkoilmglhiigbjmf" target="_blank" rel="noopener">Chrome에 추가</a>
+      <a class="btn primary" href="https://www.figma.com/community/plugin/1657063496726706112" target="_blank" rel="noopener">Figma 플러그인 설치</a>
+      <a class="btn ghost" href="#demo">▶&nbsp; 데모 보기</a>
+    </div>
+    <div class="note">매달 <b>5회 무료</b> · 가입/로그인 불필요 · 30초 안에 첫 변환 · Chrome 확장 + <a href="https://www.figma.com/community/plugin/1657063496726706112" target="_blank" rel="noopener">Figma 플러그인</a> 둘 다 설치해야 동작해요</div>
+  </section>
+
+  <div class="marquee" aria-hidden="true">
+    <div class="track">
+      <span>Auto Layout</span><span>SVG → Vector</span><span>Editable Text</span><span>iframe &amp; Shadow DOM</span><span>Local Styles</span><span>6-digit Direct Send</span><span>Gradients</span><span>Asymmetric Borders</span><span>Shadows &amp; Opacity</span><span>Chunked Streaming</span>
+      <span>Auto Layout</span><span>SVG → Vector</span><span>Editable Text</span><span>iframe &amp; Shadow DOM</span><span>Local Styles</span><span>6-digit Direct Send</span><span>Gradients</span><span>Asymmetric Borders</span><span>Shadows &amp; Opacity</span><span>Chunked Streaming</span>
+    </div>
+  </div>
+
+  <!-- ───────── demo ───────── -->
+  <section class="demo-sec wrap" id="demo">
+    <div class="sec-head rv">
+      <div class="tag">Live Demo</div>
+      <h2>캡처부터 편집까지, 14초.</h2>
+      <p>왼쪽 브라우저에서 캡처하면 오른쪽 Figma에 실제 레이어로 도착합니다. 마지막엔 텍스트 색을 바꿔봅니다 — 이미지라면 불가능한 일이죠.</p>
+    </div>
+    <div class="player rv">
+      <div class="glow"></div>
+      <div class="viewport">
+        <div class="stage" id="stage">
+          <div class="scene">
+            <!-- 브라우저 -->
+            <div class="pane bw">
+              <div class="top">
+                <span class="dots"><i></i><i></i><i></i></span>
+                <span class="url">acme.studio</span>
+                <span class="ext-ico">&lt;/&gt;</span>
+              </div>
+              <div class="page">
+                <div class="p-nav fl fl-1"><span class="lg"></span><span class="sk ln"></span><span class="sk ln"></span><span class="sk ln"></span></div>
+                <div class="p-hero fl fl-2">
+                  <div class="sk t1"></div>
+                  <div class="sk t2"></div>
+                  <div class="sk t3"></div>
+                  <div class="p-cta"></div>
+                </div>
+                <div class="p-img fl fl-3"></div>
+                <div class="p-cards fl fl-4">
+                  <div class="card"><div class="th"></div><div class="sk l1"></div><div class="sk l2"></div></div>
+                  <div class="card"><div class="th"></div><div class="sk l1"></div><div class="sk l2"></div></div>
+                  <div class="card"><div class="th"></div><div class="sk l1"></div><div class="sk l2"></div></div>
+                </div>
+                <div class="scanline"></div>
+              </div>
+            </div>
+
+            <!-- Figma -->
+            <div class="pane fg">
+              <div class="top"><span class="fig"></span> html2figma plugin <span class="code">code 704-921</span></div>
+              <div class="body">
+                <div class="layers">
+                  <div class="hd">LAYERS</div>
+                  <div class="lyr lyr-1"><i></i> Frame 1440</div>
+                  <div class="lyr lyr-2"><i></i> Navigation</div>
+                  <div class="lyr txt lyr-3"><i>T</i> Hero title</div>
+                  <div class="lyr lyr-4"><i></i> Hero image</div>
+                  <div class="lyr lyr-5"><i></i> Card grid</div>
+                </div>
+                <div class="canvas">
+                  <div class="f-nav rb rb-1"><span class="lg"></span><span class="rb ln" style="opacity:1;animation:none;height:7px;width:38px"></span></div>
+                  <div class="f-t1 rb"></div>
+                  <div class="rb rb-3 f-t2"></div>
+                  <div class="rb rb-4 f-img"></div>
+                  <div class="rb rb-5 f-cards" style="background:none">
+                    <div class="f-card"><div class="th"></div><div class="rb l1" style="opacity:1;animation:none;background:#1d1d34"></div></div>
+                    <div class="f-card"><div class="th"></div><div class="rb l1" style="opacity:1;animation:none;background:#1d1d34"></div></div>
+                    <div class="f-card"><div class="th"></div><div class="rb l1" style="opacity:1;animation:none;background:#1d1d34"></div></div>
+                  </div>
+                  <div class="selbox" style="left:10px; top:50px; width:76%; height:25px"><i></i><i></i><i></i><i></i></div>
+                  <div class="swatch" style="left:24%; top:86px"><i></i><i></i><i></i><i></i></div>
+                </div>
+              </div>
+              <div class="done">✓ 편집 가능한 레이어로 변환 완료</div>
+            </div>
+          </div>
+
+          <!-- 전송 패킷 / 커서 / 캡션 -->
+          <div class="packet">page.h2f ⚡</div>
+          <svg class="cursor" viewBox="0 0 24 24" fill="#fff" stroke="#0a0a14" stroke-width="1.4"><path d="M4 2l16 8.5-7 1.8L9.5 20 4 2z"/></svg>
+          <div class="caps">
+            <div class="cap cap-1"><b>01</b>클릭 한 번 — DOM·스타일·레이아웃을 그대로 읽어요</div>
+            <div class="cap cap-2"><b>02</b>파일 · 클립보드 · 6자리 코드로 즉시 전송</div>
+            <div class="cap cap-3"><b>03</b>Figma에 실제 프레임 · 텍스트 · 벡터로 재구성</div>
+            <div class="cap cap-4"><b>04</b>텍스트를 선택하고 색을 바꿔보세요 — 진짜 노드니까요</div>
+          </div>
+
+          <!-- 플레이어 바 -->
+          <div class="pbar">
+            <span class="live">LIVE DEMO</span>
+            <div class="prog"><i></i></div>
+            <span class="time">0:14 · loop</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────── features ───────── -->
+  <section class="features wrap" id="features">
+    <div class="sec-head rv">
+      <div class="tag">Features</div>
+      <h2>디테일까지 그대로 옮깁니다</h2>
+      <p>“대충 비슷하게”가 아니라, 픽셀과 스타일을 정확하게.</p>
+    </div>
+    <div class="bento">
+      <div class="cell w3 rv">
+        <div class="shine" style="background:#6c7bff"></div>
+        <div class="ic i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg></div>
+        <h3>픽셀 정확한 레이아웃</h3>
+        <p>Chrome DevTools Protocol로 DOM 스냅샷을 읽어 위치·크기를 그대로 재현합니다. 그라디언트, 그림자, 비대칭 보더, 라운드 코너, overflow 클리핑까지.</p>
+      </div>
+      <div class="cell w3 rv">
+        <div class="shine" style="background:#a78bfa"></div>
+        <div class="ic v"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2"/><path d="M12 4v16"/><path d="M9 20h6"/></svg></div>
+        <h3>진짜 편집 가능한 텍스트</h3>
+        <p>폰트·두께·색·정렬이 살아있는 텍스트 노드로 도착합니다. 이미지 위 글자를 다시 타이핑할 필요가 없어요.</p>
+      </div>
+      <div class="cell rv">
+        <div class="ic c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 18.5C7 10 13 8 19 4.5"/><rect x="2.5" y="16.5" width="4" height="4" rx="1"/><rect x="17.5" y="2.5" width="4" height="4" rx="1"/></svg></div>
+        <h3>SVG → 벡터</h3>
+        <p>인라인 SVG가 편집 가능한 벡터 노드로 변환됩니다.</p>
+      </div>
+      <div class="cell rv">
+        <div class="ic i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+        <h3>iframe · Shadow DOM</h3>
+        <p>중첩 프레임과 웹 컴포넌트도 병합해 한 번에 캡처합니다.</p>
+      </div>
+      <div class="cell rv">
+        <div class="ic v"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg></div>
+        <h3>6자리 코드 direct-send</h3>
+        <p>페어링 코드 하나로 익스텐션에서 Figma 플러그인으로 즉시 전송.</p>
+      </div>
+      <div class="cell w3 rv">
+        <div class="shine" style="background:#22d3ee"></div>
+        <div class="ic c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="7" rx="1.6"/><rect x="3" y="14" width="8" height="7" rx="1.6"/><rect x="13" y="14" width="8" height="7" rx="1.6"/></svg></div>
+        <h3>Auto Layout + Local Styles</h3>
+        <p>붙여넣고 끝이 아니라, 작업할 수 있게. Auto Layout을 자동 구성하고 색·텍스트 스타일을 Local Styles로 만들어 드립니다.</p>
+      </div>
+      <div class="cell w3 rv">
+        <div class="ic i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+        <h3>기본은 로컬, 추적 없음</h3>
+        <p>캡처 데이터는 기본적으로 내 기기 안에서만 처리됩니다. 분석·트래킹·광고 식별자 없음. direct-send 시에도 릴레이는 저장 없이 즉시 중계 후 폐기합니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────── how ───────── -->
+  <section class="how wrap">
+    <div class="sec-head rv">
+      <div class="tag">How it works</div>
+      <h2>세 단계면 충분해요</h2>
+    </div>
+    <div class="hsteps">
+      <div class="hstep rv"><h3>캡처</h3><p>옮기고 싶은 페이지에서 익스텐션 아이콘을 클릭하세요. DOM·스타일·레이아웃을 읽어 <span class="k">.h2f</span> 파일로 만듭니다.</p></div>
+      <div class="hstep rv"><h3>전송</h3><p>파일 드롭, 클립보드 붙여넣기, 또는 <span class="k">6자리 코드</span>로 Figma 플러그인에 바로 보내세요.</p></div>
+      <div class="hstep rv"><h3>편집</h3><p>실제 프레임·텍스트·벡터로 도착합니다. Auto Layout과 Local Styles까지 자동으로.</p></div>
+    </div>
+  </section>
+
+  <!-- ───────── pricing ───────── -->
+  <section class="pricing wrap" id="pricing">
+    <div class="sec-head rv">
+      <div class="tag">Pricing</div>
+      <h2>부담 없이 시작하세요</h2>
+      <p>무료로 충분히 써보고, 더 필요할 때만.</p>
+    </div>
+    <div class="plans">
+      <div class="plan free rv">
+        <div class="name">Free</div>
+        <div class="price">$0</div>
+        <div class="per">영원히</div>
+        <ul>
+          <li>매달 5회 변환</li>
+          <li>가입·로그인 불필요</li>
+          <li>모든 변환 기능 동일 (기능 제한 없음)</li>
+        </ul>
+        <a class="go" href="https://chromewebstore.google.com/detail/cgjbnhacnalehnfkkkoilmglhiigbjmf" target="_blank" rel="noopener">무료로 시작</a>
+      </div>
+      <div class="plan pro rv">
+        <div class="badge">LAUNCH50 — 3개월 50%</div>
+        <div class="name">Pro</div>
+        <div class="price">$9 <small>/ 월</small></div>
+        <div class="per">언제든 해지 가능</div>
+        <ul>
+          <li>무제한 변환</li>
+          <li>Google 계정 로그인으로 모든 기기에서 사용</li>
+          <li>결제는 Paddle(Merchant of Record)이 안전하게 처리</li>
+        </ul>
+        <a class="go" href="/upgrade.html?dc=LAUNCH50">Pro 시작하기</a>
+      </div>
+    </div>
+    <div class="coupon rv">🎉 선착순 100명 — 결제 시 코드 <code>LAUNCH50</code> 자동 적용 시 첫 3개월 50% 할인 (2026-08-08까지)</div>
+  </section>
+
+  <!-- ───────── faq ───────── -->
+  <section class="faq wrap">
+    <div class="sec-head rv">
+      <div class="tag">FAQ</div>
+      <h2>자주 묻는 질문</h2>
+    </div>
+    <details class="rv"><summary>스크린샷 캡처 도구와 뭐가 다른가요?</summary><div class="a">스크린샷은 한 장의 이미지지만, html2figma는 페이지를 실제 Figma 프레임·텍스트·이미지·벡터 노드로 재구성합니다. 글자를 다시 타이핑하거나 트레이싱할 필요 없이 색상·문구·레이아웃을 바로 수정할 수 있어요.</div></details>
+    <details class="rv"><summary>캡처한 데이터는 어디로 가나요?</summary><div class="a">기본적으로 내 기기 안에서만 처리됩니다(파일 다운로드/클립보드). direct-send를 사용할 때만 릴레이 서버를 "통과"하며, 저장하지 않고 즉시 중계 후 폐기합니다. 무료 사용자의 개인정보는 수집하지 않습니다.</div></details>
+    <details class="rv"><summary>Figma 플러그인이 꼭 필요한가요?</summary><div class="a">네. 크롬 익스텐션이 캡처를 담당하고, Figma 쪽 html2figma 플러그인이 캡처 파일을 받아 실제 레이어로 그려줍니다. 둘 다 무료로 설치할 수 있어요.</div></details>
+    <details class="rv"><summary>Pro 구독은 어떻게 해지하나요?</summary><div class="a">언제든 해지할 수 있습니다. 결제는 Merchant of Record인 Paddle이 처리하며, 결제 영수증 메일의 링크에서 바로 구독을 관리할 수 있어요. 환불 정책은 <a href="/refunds.html">여기</a>를 참고하세요.</div></details>
+  </section>
+
+  <!-- ───────── final cta ───────── -->
+  <section class="final wrap">
+    <div class="box rv">
+      <h2>다음 리디자인, 트레이싱부터 하지 마세요.</h2>
+      <p>30초면 첫 캡처가 Figma에 도착합니다. 매달 5회는 계속 무료예요.</p>
+      <div class="ctas">
+        <a class="btn primary" href="https://chromewebstore.google.com/detail/cgjbnhacnalehnfkkkoilmglhiigbjmf" target="_blank" rel="noopener">Chrome에 추가</a>
+        <a class="btn ghost" href="/upgrade.html?dc=LAUNCH50">LAUNCH50으로 Pro 시작</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap cols">
+      <div>© 2026 html2figma · 결제는 Merchant of Record인 Paddle.com이 처리합니다.</div>
+      <div class="links">
+        <a href="/terms.html">이용약관</a>
+        <a href="/privacy.html">개인정보처리방침</a>
+        <a href="/refunds.html">환불정책</a>
+        <a href="mailto:doscmdev@gmail.com">문의</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // 데모 스테이지를 컨테이너 폭에 맞게 스케일 (960×560 고정 좌표계 유지)
+    (function () {
+      var stage = document.getElementById("stage");
+      var vp = stage.parentElement;
+      function fit() { stage.style.transform = "scale(" + (vp.clientWidth / 960) + ")"; }
+      fit();
+      window.addEventListener("resize", fit);
+    })();
+
+    // 스크롤 리빌
+    (function () {
+      var io = new IntersectionObserver(function (es) {
+        es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
+      }, { threshold: 0.12 });
+      document.querySelectorAll(".rv").forEach(function (el) { io.observe(el); });
+    })();
+  </script>
+</body>
+</html>

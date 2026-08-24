@@ -3,6 +3,8 @@ import { buildIR } from "../src/capture/builder.js";
 import { mapStyle } from "../src/capture/style.js";
 import { COMPUTED_STYLES } from "../src/capture/styleProps.js";
 import { parseCssColor } from "@html2figma/shared";
+import { applyPseudoIcons, type PseudoIcon } from "../src/capture/pseudo.js";
+import type { FrameNode, H2FNode } from "@html2figma/shared";
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
@@ -341,6 +343,142 @@ assert(
   "placeholder 텍스트가 padding-left 만큼 안쪽으로 배치됨"
 );
 
+/* ---------------- range slider(input[type=range]) → thumb 합성 케이스 ---------------- */
+console.log("\nrange slider thumb:");
+const s5: string[] = [""];
+const intern5 = (s: string) => {
+  const i = s5.indexOf(s);
+  if (i >= 0) return i;
+  s5.push(s);
+  return s5.length - 1;
+};
+const styleRow5 = (map: Record<string, string>) =>
+  COMPUTED_STYLES.map((name) => intern5(map[name] ?? ""));
+
+const snapshot5: CaptureSnapshotResult = {
+  strings: s5,
+  documents: [
+    {
+      documentURL: intern5("https://r.com"),
+      title: intern5("R"),
+      nodes: {
+        parentIndex: [-1, 0, 1],
+        nodeType: [1, 1, 1],
+        nodeName: [intern5("BODY"), intern5("DIV"), intern5("INPUT")],
+        nodeValue: [intern5(""), intern5(""), intern5("")],
+        backendNodeId: [1, 2, 3],
+        attributes: [
+          [],
+          [],
+          [
+            intern5("type"), intern5("range"),
+            intern5("min"), intern5("18"),
+            intern5("max"), intern5("27"),
+            intern5("value"), intern5("18"),
+          ],
+        ],
+      },
+      layout: {
+        nodeIndex: [0, 1, 2],
+        styles: [
+          styleRow5({ display: "block" }),
+          styleRow5({ display: "block", "background-color": "rgb(218,219,220)" }),
+          styleRow5({ display: "block" }),
+        ],
+        bounds: [
+          [0, 0, 240, 60],
+          [0, 40, 220, 4],
+          [0, 31, 220, 22],
+        ],
+        text: [intern5(""), intern5(""), intern5("")],
+      },
+    },
+  ],
+} as unknown as CaptureSnapshotResult;
+
+const built5 = buildIR(parseAllDocuments(snapshot5));
+const collect5 = (n: import("@html2figma/shared").H2FNode, out: import("@html2figma/shared").H2FNode[]) => {
+  out.push(n);
+  if (n.type === "frame") for (const c of n.children) collect5(c, out);
+};
+const all5: import("@html2figma/shared").H2FNode[] = [];
+if (built5.root) collect5(built5.root, all5);
+assert(
+  !all5.some((n) => n.type === "text" && (n.characters === "18" || n.characters === "27")),
+  "range input 의 value(18) 가 텍스트로 렌더되지 않음"
+);
+const thumb = all5.find((n) => n.type === "frame" && n.name === "thumb");
+assert(!!thumb, "range input 에 thumb(핸들) 프레임이 합성됨");
+assert(
+  !!thumb && thumb.type === "frame" && thumb.layout.x === 0 && thumb.layout.width === 18,
+  "thumb 가 value=min 위치(트랙 좌측 끝)에 배치됨"
+);
+
+/* ---------------- 커스텀 라디오(appearance:none) → 네이티브 링 합성 안 함 ---------------- */
+console.log("\ncustom radio (appearance:none):");
+const buildRadioSnapshot = (map: Record<string, string>): CaptureSnapshotResult => {
+  const ss: string[] = [""];
+  const it = (s: string) => {
+    const i = ss.indexOf(s);
+    if (i >= 0) return i;
+    ss.push(s);
+    return ss.length - 1;
+  };
+  const row = (m: Record<string, string>) => COMPUTED_STYLES.map((name) => it(m[name] ?? ""));
+  return {
+    strings: ss,
+    documents: [
+      {
+        documentURL: it("https://x.com"),
+        title: it("X"),
+        nodes: {
+          parentIndex: [-1, 0],
+          nodeType: [1, 1],
+          nodeName: [it("BODY"), it("INPUT")],
+          nodeValue: [it(""), it("")],
+          backendNodeId: [1, 2],
+          attributes: [[], [it("type"), it("radio"), it("checked"), it("")]],
+        },
+        layout: {
+          nodeIndex: [0, 1],
+          styles: [row({ display: "block" }), row(map)],
+          bounds: [
+            [0, 0, 240, 60],
+            [10, 10, 24, 24],
+          ],
+          text: [it(""), it("")],
+        },
+      },
+    ],
+  } as unknown as CaptureSnapshotResult;
+};
+const collectAll = (n: import("@html2figma/shared").H2FNode, out: import("@html2figma/shared").H2FNode[]) => {
+  out.push(n);
+  if (n.type === "frame") for (const c of n.children) collectAll(c, out);
+};
+
+const customRadio = buildIR(
+  parseAllDocuments(
+    buildRadioSnapshot({ display: "block", appearance: "none", color: "rgb(5,20,31)" })
+  )
+);
+const customNodes: import("@html2figma/shared").H2FNode[] = [];
+if (customRadio.root) collectAll(customRadio.root, customNodes);
+assert(
+  !customNodes.some((n) => n.type === "frame" && n.name === "radio"),
+  "appearance:none 커스텀 라디오는 네이티브 'radio' 링 프레임을 합성하지 않음(검은 테두리 방지)"
+);
+
+const nativeRadio = buildIR(
+  parseAllDocuments(buildRadioSnapshot({ display: "block", color: "rgb(5,20,31)" }))
+);
+const nativeNodes: import("@html2figma/shared").H2FNode[] = [];
+if (nativeRadio.root) collectAll(nativeRadio.root, nativeNodes);
+assert(
+  nativeNodes.some((n) => n.type === "frame" && n.name === "radio"),
+  "appearance 미지정 네이티브 라디오는 기존대로 'radio' 프레임을 합성함"
+);
+
 /* ---------------- device px → CSS px 배율 정규화 케이스 ---------------- */
 console.log("\nscale 정규화:");
 const scaled = parseAllDocuments(snapshot4, 2); // DPR 2 가정
@@ -622,7 +760,7 @@ function inlineSplitSnap(): CaptureSnapshotResult {
         },
         layout: {
           nodeIndex: [0, 1, 2, 4, 5, 6],
-          styles: [row({ display: "block" }), row({ display: "block" }), row({}), row({ display: "inline" }), row({}), row({})],
+          styles: [row({ display: "block" }), row({ display: "block" }), row({}), row({ display: "inline", "font-weight": "700" }), row({}), row({})],
           bounds: [
             [0, 0, 700, 150],
             [0, 0, 700, 147],
@@ -649,9 +787,72 @@ const splitTexts = collectTexts(splitIR.root);
 const merged = splitTexts.find(
   (t) => (t as { characters?: string }).characters?.includes("200가지") && (t as { characters?: string }).characters?.includes("입니다")
 );
-assert(!merged, "인라인 요소 앞뒤 텍스트가 하나로 합쳐지지 않음");
-const tail = splitTexts.find((t) => (t as { characters?: string }).characters === "입니다");
-assert(!!tail && tail.layout.x >= 200, "strong 뒤 '입니다' 가 자기 위치(x≈228)에 배치됨(x=0 겹침 아님)");
+assert(!!merged, "인라인 요소가 섞인 텍스트가 하나의 노드로 병합됨(조각 분리 아님)");
+{
+  const segs = (merged as { segments?: { start: number; end: number; fontWeight?: number }[] }).segments;
+  const chars = (merged as { characters?: string }).characters ?? "";
+  const bold = segs?.find((sg) => (sg.fontWeight ?? 400) >= 700);
+  assert(!!bold, "굵은 <strong> 구간이 bold segment 로 표시됨");
+  assert(
+    !!bold && chars.slice(bold.start, bold.end) === "제조사 무사고 인증차량",
+    "bold segment 범위가 <strong> 내부 텍스트를 정확히 덮음"
+  );
+}
+
+/* -------- 인라인 <b> 앞뒤 공백 보존 (버튼 "…완료) 166 건" 붙음 방지) -------- */
+function inlineSpaceSnap(): CaptureSnapshotResult {
+  const s: string[] = [""];
+  const it = (v: string) => {
+    const i = s.indexOf(v);
+    if (i >= 0) return i;
+    s.push(v);
+    return s.length - 1;
+  };
+  const row = (m: Record<string, string>) => COMPUTED_STYLES.map((n) => it(m[n] ?? ""));
+  // <div>전시준비중(탁송 완료) <b>166</b> 건</div>
+  return {
+    strings: s,
+    documents: [
+      {
+        documentURL: it("https://example.com"),
+        title: it("space"),
+        nodes: {
+          parentIndex: [-1, 0, 0, 2, 0],
+          nodeType: [1, 3, 1, 3, 3],
+          nodeName: [it("DIV"), it("#text"), it("B"), it("#text"), it("#text")],
+          nodeValue: [it(""), it("전시준비중(탁송 완료) "), it(""), it("166"), it(" 건")],
+          backendNodeId: [1, 2, 3, 4, 5],
+          attributes: [[], [], [], [], []],
+        },
+        layout: {
+          nodeIndex: [0, 1, 2, 3, 4],
+          styles: [row({ display: "block" }), row({}), row({ display: "inline", "font-weight": "700" }), row({}), row({})],
+          bounds: [
+            [0, 0, 200, 40],
+            [10, 10, 118, 20], // "전시준비중(탁송 완료) " (끝 공백 포함)
+            [128, 10, 24, 20], // <b> 166
+            [128, 10, 24, 20], // 166 텍스트
+            [152, 10, 20, 20], // " 건" (앞 공백 포함) — 박스는 <b> 오른쪽 끝(152)에서 시작
+          ],
+          text: [it(""), it("전시준비중(탁송 완료) "), it(""), it("166"), it(" 건")],
+        },
+      },
+    ],
+  } as unknown as CaptureSnapshotResult;
+}
+const spaceTexts = collectTexts(buildIR(parseAllDocuments(inlineSpaceSnap())).root);
+const spaceMerged = spaceTexts.find((t) => (t as { characters?: string }).characters?.includes("전시준비중"));
+assert(
+  (spaceMerged as { characters?: string })?.characters === "전시준비중(탁송 완료) 166 건",
+  "인라인 <b> 가 섞인 버튼 텍스트가 공백 보존된 하나의 노드로 병합됨(완료)166 붙음 방지)"
+);
+{
+  const chars = (spaceMerged as { characters?: string }).characters ?? "";
+  const segs = (spaceMerged as { segments?: { start: number; end: number; fontWeight?: number }[] }).segments;
+  const bold = segs?.find((sg) => (sg.fontWeight ?? 400) >= 700);
+  assert(!!bold, "<b>166</b> 이 bold segment 로 표시됨");
+  assert(!!bold && chars.slice(bold.start, bold.end) === "166", "bold segment 범위가 '166' 을 정확히 덮음");
+}
 
 /* ---------------- 상대 이미지 URL → 절대 URL 해석 케이스 ---------------- */
 console.log("\n상대 이미지 URL 해석:");
@@ -865,6 +1066,38 @@ assert(
 assert(
   !swiperIR.imageUrls.has("https://cpo-cdn.kia.com/public/banner/HIDDEN.png"),
   "클립 밖 숨은 슬라이드 이미지는 제거됨"
+);
+
+/* ---------------- ::before content:"" border 오버레이 → border 프레임 합성 ---------------- */
+console.log("\npseudo border overlay:");
+const pseudoRoot: FrameNode = {
+  id: "root", name: "root", type: "frame",
+  layout: { x: 0, y: 0, width: 200, height: 100 },
+  style: {}, children: [],
+};
+const btnFrame: FrameNode = {
+  id: "btn", name: "button", type: "frame",
+  layout: { x: 4, y: 4, width: 52, height: 37 },
+  style: { fills: [{ type: "solid", color: { r: 1, g: 1, b: 1, a: 1 } }] }, children: [],
+};
+pseudoRoot.children.push(btnFrame);
+const borderIcon: PseudoIcon = {
+  x: 4, y: 4, w: 52, h: 37, svg: false, hostId: "btn",
+  borderColor: "rgb(230, 231, 233)", borderWidth: 1, radius: 4,
+};
+const hostFrames = new Map<string, FrameNode>([["btn", btnFrame]]);
+await applyPseudoIcons([borderIcon], pseudoRoot, new Set<string>(), {}, hostFrames);
+const borderFrame = btnFrame.children.find((c: H2FNode) => c.type === "frame" && c.name === "border");
+assert(!!borderFrame, "border-only ::before 가 border 프레임으로 합성됨");
+assert(
+  !!borderFrame && borderFrame.type === "frame" &&
+    !!borderFrame.style.strokes && borderFrame.style.strokes[0].weight === 1,
+  "border 프레임에 stroke(weight 1) 가 적용됨"
+);
+assert(
+  !!borderFrame && borderFrame.type === "frame" &&
+    !!borderFrame.style.cornerRadius && borderFrame.style.cornerRadius.tl === 4,
+  "border 프레임에 cornerRadius(4) 가 적용됨"
 );
 
 console.log(failures === 0 ? "\n✅ 모든 테스트 통과" : `\n❌ ${failures}개 실패`);

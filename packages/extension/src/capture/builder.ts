@@ -18,7 +18,7 @@ import {
   isOutsideClip,
 } from "./clip.js";
 import type { BuildCtx } from "./builderTypes.js";
-import { buildDirectTexts, buildInputText, buildSelectText } from "./textNodeBuilder.js";
+import { buildDirectTexts, buildInlineText, isInlineTextContainer, buildInputText, buildSelectText } from "./textNodeBuilder.js";
 import { buildFormControl } from "./formNodeBuilder.js";
 import { buildImage, buildSvg, extractBackgroundImages } from "./mediaNodeBuilder.js";
 
@@ -109,17 +109,24 @@ export function buildIR(snapshot: ParsedSnapshot) {
     const children: H2FNode[] = [];
 
     for (const v of extractBackgroundImages(ctx, node, style, layout)) children.push(v);
-    for (const t of buildDirectTexts(ctx, node, ox, oy)) children.push(t);
-    const it = buildInputText(ctx, node, ox, oy);
-    if (it) children.push(it);
-    for (const st of buildSelectText(ctx, node, ox, oy)) children.push(st);
 
-    // checkbox / radio 체크 마크 합성 (이미 프레임+자식까지 반환하므로 early-return)
-    const fc = buildFormControl(ctx, node, ox, oy);
-    if (fc.length > 0) return fc;
+    if (isInlineTextContainer(node)) {
+      // 텍스트+인라인 서식(<b> 등) 혼합: 하나의 텍스트 노드로 병합(굵게 등은 range).
+      const t = buildInlineText(ctx, node, ox, oy);
+      if (t) children.push(t);
+    } else {
+      for (const t of buildDirectTexts(ctx, node, ox, oy)) children.push(t);
+      const it = buildInputText(ctx, node, ox, oy);
+      if (it) children.push(it);
+      for (const st of buildSelectText(ctx, node, ox, oy)) children.push(st);
 
-    for (const c of node.children) {
-      if (c.nodeType === 1) children.push(...build(c, ox, oy, childClip));
+      // checkbox / radio 체크 마크 합성 (이미 프레임+자식까지 반환하므로 early-return)
+      const fc = buildFormControl(ctx, node, ox, oy);
+      if (fc.length > 0) return fc;
+
+      for (const c of node.children) {
+        if (c.nodeType === 1) children.push(...build(c, ox, oy, childClip));
+      }
     }
 
     // iframe 내용 문서 병합 (자식 좌표를 iframe 절대 위치만큼 오프셋)

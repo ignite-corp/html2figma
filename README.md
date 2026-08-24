@@ -38,7 +38,7 @@ pnpm --filter @html2figma/bridge test      # 릴레이 룸/페어링/격리 단�
 
 1. `pnpm run build:extension`
 2. Chrome → `chrome://extensions` → 개발자 모드 ON
-3. **압축해제된 확장 프로그램을 로드** → `packages/extension/dist` 선택
+3. **압축해제된 확장 프로그램을 로드** → `packages/extension/chrome-extension` 선택
 4. 캡처할 페이지에서 툴바 아이콘 클릭 → 현재 페이지 캡처
 5. `.h2f` 다운로드 / 클립보드 복사 / **Figma 로 전송**(브릿지 실행 시)
 
@@ -48,7 +48,7 @@ pnpm --filter @html2figma/bridge test      # 릴레이 룸/페어링/격리 단�
 
 1. `pnpm run build:plugin`
 2. Figma 데스크톱 → Plugins → Development → **Import plugin from manifest…**
-3. `packages/figma-plugin/manifest.json` 선택 (루트·`dist/` 어느 쪽을 골라도 동작)
+3. `packages/figma-plugin/manifest.json` 선택 (루트·`figma-plugin/` 어느 쪽을 골라도 동작)
 4. 플러그인 실행 → `.h2f` 파일 드롭(또는 클립보드 JSON 붙여넣기) → **임포트**
 
 ## Figma로 direct send (페어링 릴레이)
