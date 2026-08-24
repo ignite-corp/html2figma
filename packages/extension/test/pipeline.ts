@@ -1328,5 +1328,68 @@ assert(
   "수집된 fixed 프레임은 뷰포트 크기(1000) 그대로 — 확장은 루트 확정 후 단계에서 수행"
 );
 
+/* ---------------- body 가로 클립 판정 (딤드가 우측을 못 덮던 문제) ---------------- */
+// MUI 는 모달이 열리면 스크롤 잠금으로 body{overflow:hidden} 을 건다. 그러면 뷰포트보다
+// 넓은 콘텐츠는 스크롤로도 볼 수 없으므로, 루트를 콘텐츠 폭까지 넓히면 아무 요소도 닿지
+// 않는 유령 영역이 생기고 fixed 딤드가 그 부분을 덮지 못한다(우측 80px 밝은 띠).
+// scroll/auto 는 스크롤해서 볼 수 있으니 클립으로 보지 않는다.
+console.log("\nbody 가로 클립 판정:");
+function bodyOverflowSnap(overflow: string): CaptureSnapshotResult {
+  const s: string[] = [""];
+  const it = (v: string) => {
+    const i = s.indexOf(v);
+    if (i >= 0) return i;
+    s.push(v);
+    return s.length - 1;
+  };
+  const row = (m: Record<string, string>) => COMPUTED_STYLES.map((n) => it(m[n] ?? ""));
+  return {
+    strings: s,
+    documents: [
+      {
+        documentURL: it("https://example.com"),
+        title: it("body overflow"),
+        nodes: {
+          parentIndex: [-1, 0],
+          nodeType: [1, 1],
+          nodeName: [it("BODY"), it("DIV")],
+          nodeValue: [it(""), it("")],
+          backendNodeId: [1, 2],
+          attributes: [[], []],
+        },
+        layout: {
+          nodeIndex: [0, 1],
+          styles: [
+            row({ "display": "block", "overflow": overflow, "background-color": "rgb(255,255,255)" }),
+            // 뷰포트(1520)보다 넓은 min-width 레이아웃
+            row({ "display": "block", "background-color": "rgb(240,240,240)" }),
+          ],
+          bounds: [
+            [0, 0, 1520, 900],
+            [0, 0, 1600, 900],
+          ],
+          text: [it(""), it("")],
+        },
+      },
+    ],
+  } as unknown as CaptureSnapshotResult;
+}
+assert(
+  buildIR(parseAllDocuments(bodyOverflowSnap("hidden"))).bodyClipsX,
+  "body{overflow:hidden} → 가로 클립으로 판정"
+);
+assert(
+  buildIR(parseAllDocuments(bodyOverflowSnap("clip"))).bodyClipsX,
+  "body{overflow:clip} → 가로 클립으로 판정"
+);
+assert(
+  !buildIR(parseAllDocuments(bodyOverflowSnap("auto"))).bodyClipsX,
+  "body{overflow:auto} → 스크롤 가능하므로 클립 아님"
+);
+assert(
+  !buildIR(parseAllDocuments(bodyOverflowSnap("visible"))).bodyClipsX,
+  "body{overflow:visible} → 클립 아님"
+);
+
 console.log(failures === 0 ? "\n✅ 모든 테스트 통과" : `\n❌ ${failures}개 실패`);
 process.exit(failures === 0 ? 0 : 1);

@@ -48,6 +48,11 @@ export function buildIR(snapshot: ParsedSnapshot, pseudoHostIds: Set<string> = n
   const svgUrlRequests: import("./builderTypes.js").SvgUrlRequest[] = [];
   const hostFrames = new Map<string, FrameNode>();
   const fixedFrames: FrameNode[] = [];
+  // body 가 가로 오버플로를 잘라내는지(hidden/clip). scroll/auto 는 사용자가 스크롤해서
+  // 볼 수 있으니 제외한다. 잘라내면 문서가 콘텐츠 폭만큼 넓어도 사용자가 볼 수 있는 폭은
+  // 뷰포트뿐이므로, 루트를 콘텐츠 폭까지 넓히면 아무것도 닿지 않는 유령 영역이 생긴다
+  // (모달 딤드가 우측 80px 를 못 덮던 문제 — MUI 가 스크롤 잠금으로 body:overflow:hidden 을 건다).
+  let bodyClipsX = false;
   const docs = snapshot.documents;
   let idCounter = 0;
   const baseUrl = docs[0]?.url || "";
@@ -189,6 +194,10 @@ export function buildIR(snapshot: ParsedSnapshot, pseudoHostIds: Set<string> = n
     if (hostId) hostFrames.set(hostId, frame);
     // fixed 오버레이는 루트 크기 확정 후 늘려야 하므로 모아둔다(BuildResult.fixedFrames).
     if (rl?.styles["position"] === "fixed") fixedFrames.push(frame);
+    if (node.nodeName === "BODY" && rl) {
+      const ox = rl.styles["overflow-x"] || rl.styles["overflow"];
+      if (ox === "hidden" || ox === "clip") bodyClipsX = true;
+    }
     return [frame];
   }
 
@@ -224,5 +233,5 @@ export function buildIR(snapshot: ParsedSnapshot, pseudoHostIds: Set<string> = n
     };
   }
 
-  return { root, imageUrls, svgRequests, svgUrlRequests, hostFrames, fixedFrames };
+  return { root, imageUrls, svgRequests, svgUrlRequests, hostFrames, fixedFrames, bodyClipsX };
 }

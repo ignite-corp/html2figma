@@ -272,10 +272,15 @@ export async function capturePage(
       pseudoIcons.map((p) => p.hostId).filter((id): id is string => !!id)
     );
 
-    const { root, imageUrls, svgRequests, svgUrlRequests, hostFrames, fixedFrames } = buildIR(
-      parsed,
-      pseudoHostIds
-    );
+    const {
+      root,
+      imageUrls,
+      svgRequests,
+      svgUrlRequests,
+      hostFrames,
+      fixedFrames,
+      bodyClipsX,
+    } = buildIR(parsed, pseudoHostIds);
     if (!root) throw new Error("변환할 노드가 없습니다.");
 
     // 루트 프레임 폭을 "실제 레이아웃 폭"에 맞춘다.
@@ -295,9 +300,14 @@ export async function capturePage(
       const contentWidth =
         contentRight > -Infinity ? contentRight - root.layout.x : 0;
       const layoutWidth = Math.min(Math.max(maxNodeWidth, contentWidth), fullWidth);
+      // body 가 가로를 잘라내면(overflow-x: hidden|clip) 뷰포트 밖 콘텐츠는 스크롤로도
+      // 볼 수 없다. 이때 콘텐츠 폭까지 넓히면 아무 요소도 닿지 않는 유령 영역이 생겨
+      // 모달 딤드 같은 뷰포트 오버레이가 그 부분을 덮지 못한다. 뷰포트 폭을 진실로 둔다.
       root.layout = {
         ...root.layout,
-        width: Math.max(root.layout.width, vp.width, layoutWidth),
+        width: bodyClipsX
+          ? vp.width
+          : Math.max(root.layout.width, vp.width, layoutWidth),
         height: Math.max(root.layout.height, fullHeight),
       };
       // body/wrapper 등 자기보다 넓은 자손을 가진 컨테이너를 루트 폭까지 넓혀 정렬을 맞춘다.

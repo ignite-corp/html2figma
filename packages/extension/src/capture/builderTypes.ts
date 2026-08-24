@@ -24,6 +24,12 @@ export interface BuildResult {
    * 뷰포트를 꽉 덮는 것만 골라 늘리기 위해 모아둔다.
    */
   fixedFrames: FrameNode[];
+  /**
+   * body 가 가로 오버플로를 잘라내는지(overflow-x: hidden|clip).
+   * true 면 콘텐츠가 뷰포트보다 넓어도 사용자는 볼 수 없으므로, 루트 폭을 콘텐츠 폭까지
+   * 넓히면 안 된다(닿지 않는 유령 영역이 생겨 딤드가 못 덮는다).
+   */
+  bodyClipsX: boolean;
 }
 
 export interface BuildCtx {
