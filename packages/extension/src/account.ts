@@ -7,7 +7,7 @@
  * authorization-code 교환은 account-api Worker 가 수행한다(client secret 은
  * 서버에만 존재). 익스텐션은 Worker 가 발급한 자체 세션 토큰만 보관한다.
  */
-import { ACCOUNT_API_URL, GOOGLE_CLIENT_ID, PRO_OFFLINE_GRACE_MS } from "./config.js";
+import { ACCOUNT_API_URL, GOOGLE_CLIENT_ID, PRO_OFFLINE_GRACE_MS } from "./billingConfig.js";
 
 const STORAGE_KEY = "account";
 
