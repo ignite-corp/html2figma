@@ -1163,5 +1163,73 @@ assert(
   "line-height:0 은 지정 없음으로 취급 (Figma 텍스트 박스 붕괴 방지)"
 );
 
+/* ---------------- 의사요소 호스트는 비어 보여도 프루닝하지 않는다 ---------------- */
+// 실제 사례(DEALERS_BO): appearance:none 라디오는 배경·테두리·자식이 없고 ::before 로만
+// 그려진다. 호스트가 프루닝되면 hostFrames 에 등록되지 않아 applyPseudoIcons 가 아이콘을
+// 루트로 올리고(루트 폴백), 그 아이콘이 모달보다 나중에 그려져 모달 위로 떠올랐다.
+console.log("\n의사요소 호스트 프루닝 방지:");
+function pseudoHostSnap(): CaptureSnapshotResult {
+  const s: string[] = [""];
+  const it = (v: string) => {
+    const i = s.indexOf(v);
+    if (i >= 0) return i;
+    s.push(v);
+    return s.length - 1;
+  };
+  const row = (m: Record<string, string>) => COMPUTED_STYLES.map((n) => it(m[n] ?? ""));
+  return {
+    strings: s,
+    documents: [
+      {
+        documentURL: it("https://example.com"),
+        title: it("pseudo host"),
+        nodes: {
+          parentIndex: [-1, 0],
+          nodeType: [1, 1],
+          nodeName: [it("DIV"), it("INPUT")],
+          nodeValue: [it(""), it("")],
+          backendNodeId: [1, 2],
+          // 라디오에 data-h2f-el 부여 (의사요소 매칭 키)
+          attributes: [[], [it("data-h2f-el"), it("el-42")]],
+        },
+        layout: {
+          nodeIndex: [0, 1],
+          styles: [
+            row({ "display": "block", "background-color": "rgb(255, 255, 255)" }),
+            // 배경·테두리·자식 없음 → 종전에는 프루닝 대상
+            row({ "display": "block", "appearance": "none" }),
+          ],
+          bounds: [
+            [0, 0, 200, 60],
+            [8, 8, 24, 24],
+          ],
+          text: [it(""), it("")],
+        },
+      },
+    ],
+  } as unknown as CaptureSnapshotResult;
+}
+const noPseudo = buildIR(parseAllDocuments(pseudoHostSnap()));
+assert(
+  !noPseudo.hostFrames.has("el-42"),
+  "의사요소가 없으면 빈 요소는 그대로 프루닝된다(기존 동작 유지)"
+);
+const withPseudo = buildIR(parseAllDocuments(pseudoHostSnap()), new Set(["el-42"]));
+assert(
+  withPseudo.hostFrames.has("el-42"),
+  "의사요소 아이콘이 달린 빈 요소는 남아 hostFrames 에 등록된다"
+);
+const pseudoHostFrame = withPseudo.hostFrames.get("el-42");
+assert(
+  !!pseudoHostFrame && pseudoHostFrame.layout.x === 8 && pseudoHostFrame.layout.width === 24,
+  "호스트 프레임이 원래 좌표/크기를 유지한다 (x=8, w=24)"
+);
+assert(
+  !!withPseudo.root &&
+    withPseudo.root.type === "frame" &&
+    withPseudo.root.children.some((c: H2FNode) => c === pseudoHostFrame),
+  "호스트가 루트로 승격되지 않고 원래 부모 밑에 남는다"
+);
+
 console.log(failures === 0 ? "\n✅ 모든 테스트 통과" : `\n❌ ${failures}개 실패`);
 process.exit(failures === 0 ? 0 : 1);

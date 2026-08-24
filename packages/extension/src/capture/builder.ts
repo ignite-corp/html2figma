@@ -36,7 +36,13 @@ const SKIP_TAGS = new Set([
   "TEMPLATE",
 ]);
 
-export function buildIR(snapshot: ParsedSnapshot) {
+/**
+ * @param pseudoHostIds ::before/::after 아이콘이 달린 요소의 data-h2f-el 집합.
+ *   이런 요소는 자기 배경·테두리·자식이 없어도 화면에는 의사요소가 그려지므로 프루닝하면
+ *   안 된다. 프루닝되면 hostFrames 에 등록되지 않아 applyPseudoIcons 가 아이콘을 루트로
+ *   올려버리고(루트 폴백), 그 결과 모달 위로 떠오르는 등 paint order 가 깨진다.
+ */
+export function buildIR(snapshot: ParsedSnapshot, pseudoHostIds: Set<string> = new Set()) {
   const imageUrls = new Set<string>();
   const svgRequests: import("./builderTypes.js").SvgRequest[] = [];
   const svgUrlRequests: import("./builderTypes.js").SvgUrlRequest[] = [];
@@ -162,7 +168,11 @@ export function buildIR(snapshot: ParsedSnapshot) {
       !!style.effects?.length ||
       !!style.cornerRadius;
 
-    if (children.length === 0 && !hasVisibleStyle) return [];
+    const hostId = node.attributes?.["data-h2f-el"];
+    // 의사요소 아이콘의 호스트는 비어 보여도 남겨야 한다(위 pseudoHostIds 주석 참고).
+    const hasPseudoIcon = !!hostId && pseudoHostIds.has(hostId);
+
+    if (children.length === 0 && !hasVisibleStyle && !hasPseudoIcon) return [];
 
     if (node.nodeName === "IFRAME") style.clipsContent = true;
 
@@ -174,7 +184,6 @@ export function buildIR(snapshot: ParsedSnapshot) {
       style,
       children: sortByOrder(children),
     };
-    const hostId = node.attributes?.["data-h2f-el"];
     if (hostId) hostFrames.set(hostId, frame);
     return [frame];
   }

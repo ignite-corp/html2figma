@@ -236,7 +236,19 @@ export async function capturePage(
     const parsed = parseAllDocuments(snapshot, scale);
     if (!parsed.documents[0]?.root) throw new Error("캡처된 노드가 없습니다.");
 
-    const { root, imageUrls, svgRequests, svgUrlRequests, hostFrames } = buildIR(parsed);
+    // DOMSnapshot 에 없는 ::before/::after 아이콘을 페이지에서 먼저 수집한다.
+    // 빌더가 "아이콘이 달린 호스트"를 알아야 그 요소를 프루닝하지 않고 남길 수 있다
+    // (프루닝되면 아이콘이 호스트를 잃고 루트로 올라가 모달 위로 떠오른다).
+    onProgress?.("아이콘 수집", 0.45);
+    const pseudoIcons = await collectPseudoIcons(session);
+    const pseudoHostIds = new Set(
+      pseudoIcons.map((p) => p.hostId).filter((id): id is string => !!id)
+    );
+
+    const { root, imageUrls, svgRequests, svgUrlRequests, hostFrames } = buildIR(
+      parsed,
+      pseudoHostIds
+    );
     if (!root) throw new Error("변환할 노드가 없습니다.");
 
     // 루트 프레임 폭을 "실제 레이아웃 폭"에 맞춘다.
@@ -265,9 +277,8 @@ export async function capturePage(
       expandToFitChildren(root, root.layout.x + root.layout.width);
     }
 
-    // DOMSnapshot 에 없는 ::before/::after 아이콘을 페이지에서 수집해 root 에 얹는다.
-    onProgress?.("아이콘 수집", 0.55);
-    const pseudoIcons = await collectPseudoIcons(session);
+    // 위에서 수집한 의사요소 아이콘을 호스트 프레임(없으면 root)에 얹는다.
+    onProgress?.("아이콘 배치", 0.55);
     const pseudoSvgAssets: AssetMap = {};
     await applyPseudoIcons(pseudoIcons, root, imageUrls, pseudoSvgAssets, hostFrames);
 
